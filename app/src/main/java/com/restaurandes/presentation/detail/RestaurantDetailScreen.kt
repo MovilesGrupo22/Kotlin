@@ -20,6 +20,8 @@ import coil3.compose.AsyncImage
 fun RestaurantDetailScreen(
     restaurantId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToReviews: () -> Unit,
+    onNavigateToCompare: () -> Unit,
     viewModel: RestaurantDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,6 +87,8 @@ fun RestaurantDetailScreen(
             uiState.restaurant != null -> {
                 RestaurantDetailContent(
                     restaurant = uiState.restaurant!!,
+                    onNavigateToReviews = onNavigateToReviews,
+                    onNavigateToCompare = onNavigateToCompare,
                     modifier = Modifier.padding(paddingValues)
                 )
             }
@@ -95,6 +99,8 @@ fun RestaurantDetailScreen(
 @Composable
 private fun RestaurantDetailContent(
     restaurant: com.restaurandes.domain.model.Restaurant,
+    onNavigateToReviews: () -> Unit,
+    onNavigateToCompare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -247,21 +253,21 @@ private fun RestaurantDetailContent(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedButton(
-                    onClick = { /* TODO: Open maps */ },
+                    onClick = onNavigateToReviews,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Directions, contentDescription = null)
+                    Icon(Icons.Default.RateReview, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cómo llegar")
+                    Text("Reviews")
                 }
                 
                 OutlinedButton(
-                    onClick = { /* TODO: Call */ },
+                    onClick = onNavigateToCompare,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Call, contentDescription = null)
+                    Icon(Icons.Default.CompareArrows, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Llamar")
+                    Text("Compare")
                 }
             }
         }

@@ -5,9 +5,11 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.restaurandes.data.analytics.AnalyticsService
 import com.restaurandes.data.remote.api.RestaurantApi
 import com.restaurandes.data.repository.LocationRepositoryImpl
+import com.restaurandes.data.repository.ReviewRepositoryImpl
 import com.restaurandes.data.repository.RestaurantRepositoryImpl
 import com.restaurandes.data.repository.UserRepositoryImpl
 import com.restaurandes.domain.repository.LocationRepository
+import com.restaurandes.domain.repository.ReviewRepository
 import com.restaurandes.domain.repository.RestaurantRepository
 import com.restaurandes.domain.repository.UserRepository
 import dagger.Module
@@ -76,6 +78,14 @@ object AppModule {
         firestore: FirebaseFirestore
     ): RestaurantRepository {
         return RestaurantRepositoryImpl(api, firestore)
+    }
+
+    @Provides
+    @Singleton
+    fun provideReviewRepository(
+        firestore: FirebaseFirestore
+    ): ReviewRepository {
+        return ReviewRepositoryImpl(firestore)
     }
 
     @Provides

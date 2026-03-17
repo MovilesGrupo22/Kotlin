@@ -9,7 +9,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.restaurandes.presentation.auth.LoginScreen
 import com.restaurandes.presentation.auth.RegisterScreen
+import com.restaurandes.presentation.detail.RestaurantComparisonScreen
 import com.restaurandes.presentation.detail.RestaurantDetailScreen
+import com.restaurandes.presentation.detail.RestaurantReviewsScreen
 import com.restaurandes.presentation.favorites.FavoritesScreen
 import com.restaurandes.presentation.home.HomeScreen
 import com.restaurandes.presentation.map.MapScreen
@@ -80,7 +82,48 @@ fun NavigationGraph(
             val restaurantId = backStackEntry.arguments?.getString("restaurantId") ?: return@composable
             RestaurantDetailScreen(
                 restaurantId = restaurantId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToReviews = {
+                    navController.navigate(Screen.RestaurantReviews.createRoute(restaurantId))
+                },
+                onNavigateToCompare = {
+                    navController.navigate(Screen.RestaurantComparison.createRoute(restaurantId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.RestaurantReviews.route,
+            arguments = listOf(navArgument("restaurantId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val restaurantId = backStackEntry.arguments?.getString("restaurantId") ?: return@composable
+            RestaurantReviewsScreen(
+                restaurantId = restaurantId,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.RestaurantComparison.route,
+            arguments = listOf(
+                navArgument("primaryRestaurantId") { type = NavType.StringType },
+                navArgument("secondaryRestaurantId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val primaryRestaurantId = backStackEntry.arguments?.getString("primaryRestaurantId")
+                ?: return@composable
+            val secondaryRestaurantId = backStackEntry.arguments?.getString("secondaryRestaurantId")
+            RestaurantComparisonScreen(
+                primaryRestaurantId = primaryRestaurantId,
+                secondaryRestaurantId = secondaryRestaurantId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { restaurantId ->
+                    navController.navigate(Screen.RestaurantDetail.createRoute(restaurantId))
+                }
             )
         }
 
