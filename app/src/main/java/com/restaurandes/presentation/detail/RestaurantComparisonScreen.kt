@@ -1,5 +1,6 @@
 package com.restaurandes.presentation.detail
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,12 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,11 +28,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,18 +58,98 @@ fun RestaurantComparisonScreen(
     viewModel: RestaurantComparisonViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val sheetState = rememberModalBottomSheetState()
 
     LaunchedEffect(primaryRestaurantId, secondaryRestaurantId) {
         viewModel.loadRestaurants(primaryRestaurantId, secondaryRestaurantId)
     }
 
+    if (uiState.showRestaurantPicker) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.hideRestaurantPicker() },
+            sheetState = sheetState
+        ) {
+            Text(
+                text = "Elige un restaurante para comparar",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(16.dp)
+            )
+
+            val suggested = uiState.suggestedRestaurant
+            if (suggested != null) {
+                Text(
+                    text = "Sugerido para ti",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clickable { viewModel.selectSecondaryRestaurant(suggested) },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = suggested.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "${suggested.category} · ${suggested.priceRange} · ${String.format("%.1f", suggested.rating)}★",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider()
+            }
+
+            LazyColumn {
+                items(uiState.availableRestaurants.filter { it.id != suggested?.id }) { restaurant ->
+                    ListItem(
+                        headlineContent = { Text(restaurant.name) },
+                        supportingContent = {
+                            Text("${restaurant.category} • ${restaurant.priceRange} • ${String.format("%.1f", restaurant.rating)}★")
+                        },
+                        modifier = Modifier.clickable { viewModel.selectSecondaryRestaurant(restaurant) }
+                    )
+                    HorizontalDivider()
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Compare", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Comparar", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (uiState.primaryRestaurant != null) {
+                        IconButton(onClick = { viewModel.showRestaurantPicker() }) {
+                            Icon(Icons.Default.SwapHoriz, contentDescription = "Cambiar")
+                        }
                     }
                 }
             )
@@ -103,6 +189,27 @@ fun RestaurantComparisonScreen(
                     onNavigateToDetail = onNavigateToDetail
                 )
             }
+
+            uiState.primaryRestaurant != null && uiState.secondaryRestaurant == null && !uiState.showRestaurantPicker -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Selecciona un restaurante para comparar",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                        Button(onClick = { viewModel.showRestaurantPicker() }) {
+                            Text("Elegir restaurante")
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -121,7 +228,7 @@ private fun ComparisonContent(
             .padding(16.dp)
     ) {
         Text(
-            text = "Comparing 2 restaurants",
+            text = "Comparando 2 restaurantes",
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.labelMedium,
@@ -186,83 +293,34 @@ private fun ComparisonCard(
 
             ComparisonMetricRow(
                 icon = {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                 },
                 value = String.format("%.1f", restaurant.rating),
                 highlight = winsRating
             )
             ComparisonMetricRow(
                 icon = {
-                    Text(
-                        text = restaurant.priceRange,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = restaurant.priceRange, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                 },
                 value = "Precio",
                 highlight = winsPrice
             )
             ComparisonMetricRow(
                 icon = {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                 },
                 value = String.format("%.1f km", comparableRestaurant.distanceKm),
                 highlight = winsDistance
             )
-            ComparisonMetricRow(
-                icon = {
-                    Icon(
-                        Icons.Default.Schedule,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                value = if (restaurant.isCurrentlyOpen()) "Open" else "Closed",
-                highlight = restaurant.isCurrentlyOpen()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "${restaurant.reviewCount} reviews",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Surface(
-                color = if (restaurant.isCurrentlyOpen()) {
-                    MaterialTheme.colorScheme.primaryContainer
-                } else {
-                    MaterialTheme.colorScheme.errorContainer
-                },
-                shape = MaterialTheme.shapes.small
-            ) {
-                Text(
-                    text = if (restaurant.isCurrentlyOpen()) "Open now" else "Closed",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelMedium
-                )
-            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
                 onClick = { onNavigateToDetail(restaurant.id) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(0.dp)
             ) {
-                Text("View Details")
+                Text("Detalles", style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -279,21 +337,23 @@ private fun ComparisonMetricRow(
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Box(modifier = Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) {
             icon()
         }
         Text(
             text = value,
             modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         if (highlight) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(14.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
         }

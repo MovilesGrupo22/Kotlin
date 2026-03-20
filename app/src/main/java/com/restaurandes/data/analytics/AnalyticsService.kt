@@ -10,7 +10,7 @@ import javax.inject.Singleton
 /**
  * Analytics Service for tracking Business Questions
  * Sprint 2 - Business Intelligence Implementation
- * 
+ *
  * Tracks:
  * - BQ1 (Type 1): Weekly Active Users
  * - BQ2 (Type 2): Section Interactions (Home/Map/Search/Favorites)
@@ -121,6 +121,23 @@ class AnalyticsService @Inject constructor() {
             userId?.let { putString("user_id", it) }
         }
         analytics.logEvent(FirebaseAnalytics.Event.SEARCH, bundle)
+    }
+
+    // BQ3: Compare Feature Usage
+    fun logCompareUsed(
+        primaryRestaurantId: String,
+        secondaryRestaurantId: String,
+        selectionMode: String,
+        userId: String?
+    ) {
+        val bundle = Bundle().apply {
+            putString("primary_restaurant_id", primaryRestaurantId)
+            putString("secondary_restaurant_id", secondaryRestaurantId)
+            putString("selection_mode", selectionMode) // "auto" or "manual"
+            userId?.let { putString("user_id", it) }
+            putLong("timestamp", System.currentTimeMillis())
+        }
+        analytics.logEvent("compare_used", bundle)
     }
 
     // Filter Events
