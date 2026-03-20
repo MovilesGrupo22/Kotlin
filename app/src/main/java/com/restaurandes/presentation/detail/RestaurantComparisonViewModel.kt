@@ -2,6 +2,7 @@ package com.restaurandes.presentation.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.restaurandes.data.analytics.AnalyticsService
 import com.restaurandes.domain.model.Location
 import com.restaurandes.domain.model.Restaurant
 import com.restaurandes.domain.repository.LocationRepository
@@ -28,18 +29,25 @@ data class RestaurantComparisonUiState(
     val secondaryRestaurant: ComparableRestaurant? = null,
     val userLocation: Location? = null,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val availableRestaurants: List<Restaurant> = emptyList(),
+    val showRestaurantPicker: Boolean = false,
+    val suggestedRestaurant: Restaurant? = null
 )
 
 @HiltViewModel
 class RestaurantComparisonViewModel @Inject constructor(
     private val restaurantRepository: RestaurantRepository,
     private val locationRepository: LocationRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val analyticsService: AnalyticsService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RestaurantComparisonUiState(isLoading = true))
     val uiState: StateFlow<RestaurantComparisonUiState> = _uiState.asStateFlow()
+
+    private var cachedLocation: Location = Location(4.6017, -74.0659)
+    private var cachedUserId: String? = null
 
     fun loadRestaurants(primaryRestaurantId: String, secondaryRestaurantId: String?) {
         viewModelScope.launch {
@@ -57,62 +65,90 @@ class RestaurantComparisonViewModel @Inject constructor(
             }
 
             val currentUser = userRepository.getCurrentUser().getOrNull()
-            val location = locationRepository.getCurrentLocation().getOrNull()
+            cachedUserId = currentUser?.id
+            cachedLocation = locationRepository.getCurrentLocation().getOrNull()
                 ?: Location(4.6017, -74.0659)
 
-            val secondaryRestaurant = when {
-                !secondaryRestaurantId.isNullOrBlank() ->
-                    restaurantRepository.getRestaurantById(secondaryRestaurantId).getOrNull()
+            val others = allRestaurants.filter { it.id != primaryRestaurant.id }
 
-                else -> chooseComparisonCandidate(
-                    primaryRestaurant = primaryRestaurant,
-                    restaurants = allRestaurants,
-                    favoriteRestaurantIds = currentUser?.favoriteRestaurants.orEmpty(),
-                    userLocation = location
+            if (!secondaryRestaurantId.isNullOrBlank()) {
+                val secondaryRestaurant = restaurantRepository.getRestaurantById(secondaryRestaurantId).getOrNull()
+                if (secondaryRestaurant == null) {
+                    _uiState.value = RestaurantComparisonUiState(
+                        isLoading = false,
+                        error = "No se pudo cargar el segundo restaurante."
+                    )
+                    return@launch
+                }
+                analyticsService.logCompareUsed(
+                    primaryRestaurantId = primaryRestaurant.id,
+                    secondaryRestaurantId = secondaryRestaurant.id,
+                    selectionMode = "auto",
+                    userId = cachedUserId
                 )
-            }
-
-            if (secondaryRestaurant == null) {
                 _uiState.value = RestaurantComparisonUiState(
+                    primaryRestaurant = ComparableRestaurant(
+                        restaurant = primaryRestaurant,
+                        distanceKm = calculateDistanceKm(cachedLocation, primaryRestaurant)
+                    ),
+                    secondaryRestaurant = ComparableRestaurant(
+                        restaurant = secondaryRestaurant,
+                        distanceKm = calculateDistanceKm(cachedLocation, secondaryRestaurant)
+                    ),
+                    userLocation = cachedLocation,
                     isLoading = false,
-                    error = "No encontramos un segundo restaurante real para comparar."
+                    availableRestaurants = others
                 )
                 return@launch
+            }
+
+            // No secondary ID — show picker with smart suggestion
+            val suggested = others.maxByOrNull { candidate ->
+                comparisonScore(
+                    candidate = candidate,
+                    primaryRestaurant = primaryRestaurant,
+                    favoriteRestaurantIds = currentUser?.favoriteRestaurants.orEmpty(),
+                    userLocation = cachedLocation
+                )
             }
 
             _uiState.value = RestaurantComparisonUiState(
                 primaryRestaurant = ComparableRestaurant(
                     restaurant = primaryRestaurant,
-                    distanceKm = calculateDistanceKm(location, primaryRestaurant)
+                    distanceKm = calculateDistanceKm(cachedLocation, primaryRestaurant)
                 ),
-                secondaryRestaurant = ComparableRestaurant(
-                    restaurant = secondaryRestaurant,
-                    distanceKm = calculateDistanceKm(location, secondaryRestaurant)
-                ),
-                userLocation = location,
-                isLoading = false
+                userLocation = cachedLocation,
+                isLoading = false,
+                showRestaurantPicker = true,
+                availableRestaurants = others,
+                suggestedRestaurant = suggested
             )
         }
     }
 
-    private fun chooseComparisonCandidate(
-        primaryRestaurant: Restaurant,
-        restaurants: List<Restaurant>,
-        favoriteRestaurantIds: List<String>,
-        userLocation: Location
-    ): Restaurant? {
-        return restaurants
-            .asSequence()
-            .filter { it.id != primaryRestaurant.id }
-            .sortedByDescending { candidate ->
-                comparisonScore(
-                    candidate = candidate,
-                    primaryRestaurant = primaryRestaurant,
-                    favoriteRestaurantIds = favoriteRestaurantIds,
-                    userLocation = userLocation
-                )
-            }
-            .firstOrNull()
+    fun showRestaurantPicker() {
+        _uiState.value = _uiState.value.copy(showRestaurantPicker = true)
+    }
+
+    fun hideRestaurantPicker() {
+        _uiState.value = _uiState.value.copy(showRestaurantPicker = false)
+    }
+
+    fun selectSecondaryRestaurant(restaurant: Restaurant) {
+        val primary = _uiState.value.primaryRestaurant ?: return
+        _uiState.value = _uiState.value.copy(
+            secondaryRestaurant = ComparableRestaurant(
+                restaurant = restaurant,
+                distanceKm = calculateDistanceKm(cachedLocation, restaurant)
+            ),
+            showRestaurantPicker = false
+        )
+        analyticsService.logCompareUsed(
+            primaryRestaurantId = primary.restaurant.id,
+            secondaryRestaurantId = restaurant.id,
+            selectionMode = "manual",
+            userId = cachedUserId
+        )
     }
 
     private fun comparisonScore(
@@ -149,8 +185,8 @@ class RestaurantComparisonViewModel @Inject constructor(
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
         val a = sin(dLat / 2) * sin(dLat / 2) +
-            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-            sin(dLon / 2) * sin(dLon / 2)
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
         return earthRadius * c
     }
