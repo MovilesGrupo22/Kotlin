@@ -7,15 +7,6 @@ import com.google.firebase.ktx.Firebase
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Analytics Service for tracking Business Questions
- * Sprint 2 - Business Intelligence Implementation
- *
- * Tracks:
- * - BQ1 (Type 1): Weekly Active Users
- * - BQ2 (Type 2): Section Interactions (Home/Map/Search/Favorites)
- * - BQ3 (Type 3): View-to-Favorite Conversion Rate
- */
 @Singleton
 class AnalyticsService @Inject constructor() {
 
@@ -23,7 +14,6 @@ class AnalyticsService @Inject constructor() {
         Firebase.analytics
     }
 
-    // BQ1: User Sessions (Weekly Active Users)
     fun logUserSession(userId: String) {
         val bundle = Bundle().apply {
             putString("user_id", userId)
@@ -41,7 +31,6 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent("user_session_end", bundle)
     }
 
-    // BQ2: Section Interactions
     enum class AppSection {
         HOME, MAP, SEARCH, FAVORITES, PROFILE, DETAIL
     }
@@ -66,7 +55,6 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent("section_interaction", bundle)
     }
 
-    // BQ3: View-to-Favorite Conversion
     fun logRestaurantView(restaurantId: String, restaurantName: String, userId: String?) {
         val bundle = Bundle().apply {
             putString("restaurant_id", restaurantId)
@@ -96,7 +84,6 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent("restaurant_unfavorited", bundle)
     }
 
-    // Authentication Events
     fun logSignIn(method: String, userId: String) {
         val bundle = Bundle().apply {
             putString(FirebaseAnalytics.Param.METHOD, method)
@@ -113,7 +100,6 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent(FirebaseAnalytics.Event.SIGN_UP, bundle)
     }
 
-    // Search Events
     fun logSearch(query: String, resultsCount: Int, userId: String?) {
         val bundle = Bundle().apply {
             putString(FirebaseAnalytics.Param.SEARCH_TERM, query)
@@ -123,7 +109,6 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent(FirebaseAnalytics.Event.SEARCH, bundle)
     }
 
-    // BQ3: Compare Feature Usage
     fun logCompareUsed(
         primaryRestaurantId: String,
         secondaryRestaurantId: String,
@@ -140,7 +125,6 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent("compare_used", bundle)
     }
 
-    // Filter Events
     fun logFilterUsed(filterType: String, userId: String?) {
         val bundle = Bundle().apply {
             putString("filter_type", filterType)
@@ -149,7 +133,6 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent("filter_applied", bundle)
     }
 
-    // User Properties (for segmentation)
     fun setUserProperties(userId: String, preferences: Map<String, String>) {
         analytics.setUserId(userId)
         preferences.forEach { (key, value) ->

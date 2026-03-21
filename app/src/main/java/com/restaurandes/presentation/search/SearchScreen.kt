@@ -43,7 +43,6 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Search Bar
             SearchBar(
                 query = uiState.query,
                 onQueryChange = { viewModel.onQueryChange(it) },
@@ -76,7 +75,6 @@ fun SearchScreen(
                     }
                 }
                 uiState.query.isBlank() -> {
-                    // Empty state
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -102,7 +100,6 @@ fun SearchScreen(
                     }
                 }
                 uiState.restaurants.isEmpty() -> {
-                    // No results
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -133,7 +130,6 @@ fun SearchScreen(
                     }
                 }
                 else -> {
-                    // Results
                     Column {
                         Text(
                             text = "${uiState.restaurants.size} resultados",
@@ -206,7 +202,6 @@ private fun SearchResultCard(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Restaurant Image
             AsyncImage(
                 model = restaurant.imageUrl,
                 contentDescription = restaurant.name,
@@ -215,7 +210,6 @@ private fun SearchResultCard(
                 contentScale = ContentScale.Crop
             )
 
-            // Restaurant Info
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)

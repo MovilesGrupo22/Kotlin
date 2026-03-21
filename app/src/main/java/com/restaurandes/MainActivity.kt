@@ -14,10 +14,6 @@ import com.restaurandes.presentation.navigation.Screen
 import com.restaurandes.ui.theme.RestaurandesTheme
 import dagger.hilt.android.AndroidEntryPoint
 
-/**
- * Main Activity for Restaurandes Application
- * Sprint 2 - Clean Architecture Implementation
- */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

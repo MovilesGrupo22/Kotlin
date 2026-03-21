@@ -102,8 +102,6 @@ class RestaurantRepositoryImpl @Inject constructor(
 
     override suspend fun searchRestaurants(query: String): Result<List<Restaurant>> {
         return try {
-            // Get all restaurants and filter in memory
-            // Note: For production, consider using Algolia or Elasticsearch for better search
             val allRestaurants = getRestaurants().getOrNull() ?: emptyList()
             
             val filtered = allRestaurants.filter { restaurant ->
@@ -162,8 +160,6 @@ class RestaurantRepositoryImpl @Inject constructor(
         radiusKm: Double
     ): Result<List<Restaurant>> {
         return try {
-            // Get all restaurants and filter by distance
-            // Note: For production with many restaurants, consider using GeoFirestore
             val allRestaurants = getRestaurants().getOrNull() ?: emptyList()
             
             val nearby = allRestaurants.filter { restaurant ->

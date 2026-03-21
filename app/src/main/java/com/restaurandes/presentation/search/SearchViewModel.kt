@@ -32,7 +32,6 @@ class SearchViewModel @Inject constructor(
 
     init {
         loadAllRestaurants()
-        // Track BQ2: Search section view
         analyticsService.logSectionView(AnalyticsService.AppSection.SEARCH, null)
     }
 
@@ -86,7 +85,6 @@ class SearchViewModel @Inject constructor(
                     isSearching = false
                 )
                 
-                // Track search (userId is optional for search analytics)
                 analyticsService.logSearch(query, filteredRestaurants.size, null)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

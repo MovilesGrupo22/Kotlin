@@ -109,7 +109,6 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Filter chips
             FilterChipsRow(
                 selectedCategory = uiState.selectedCategory,
                 availableCategories = uiState.availableCategories,
@@ -155,7 +154,6 @@ fun FilterChipsRow(
     onCategorySelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Build filter list: core filters + dynamic categories
     val allFilters = listOf("All", "Open", "TopRated") + availableCategories
     
     LazyRow(

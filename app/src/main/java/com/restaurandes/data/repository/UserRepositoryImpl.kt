@@ -26,11 +26,9 @@ class UserRepositoryImpl @Inject constructor(
     private val _currentUser = MutableStateFlow<User?>(null)
     
     init {
-        // Listen to auth state changes
         auth.addAuthStateListener { firebaseAuth ->
             val firebaseUser = firebaseAuth.currentUser
             if (firebaseUser != null) {
-                // Load user data from Firestore or create from Firebase user
                 _currentUser.value = User(
                     id = firebaseUser.uid,
                     email = firebaseUser.email ?: "",
@@ -46,7 +44,6 @@ class UserRepositoryImpl @Inject constructor(
         return try {
             val firebaseUser = auth.currentUser
             if (firebaseUser != null) {
-                // Try to load from Firestore
                 val doc = firestore.collection("users")
                     .document(firebaseUser.uid)
                     .get()
@@ -63,7 +60,6 @@ class UserRepositoryImpl @Inject constructor(
                             ?.filterIsInstance<String>() ?: emptyList()
                     )
                 } else {
-                    // Create user document if doesn't exist
                     val newUser = User(
                         id = firebaseUser.uid,
                         email = firebaseUser.email ?: "",
@@ -93,10 +89,7 @@ class UserRepositoryImpl @Inject constructor(
                 name = firebaseUser.displayName ?: email.substringBefore("@")
             )
             
-            // Load full user data from Firestore
             getCurrentUser()
-            
-            // Track login
             analyticsService.logSignIn("email", firebaseUser.uid)
             analyticsService.logUserSession(firebaseUser.uid)
             
@@ -117,11 +110,8 @@ class UserRepositoryImpl @Inject constructor(
                 name = name
             )
             
-            // Save to Firestore
             saveUserToFirestore(user)
             _currentUser.value = user
-            
-            // Track signup
             analyticsService.logSignUp("email", firebaseUser.uid)
             analyticsService.logUserSession(firebaseUser.uid)
             
@@ -136,8 +126,6 @@ class UserRepositoryImpl @Inject constructor(
             val userId = auth.currentUser?.uid
             auth.signOut()
             _currentUser.value = null
-            
-            // Track session end
             userId?.let {
                 analyticsService.logUserSessionEnd(it, 0)
             }
@@ -166,15 +154,12 @@ class UserRepositoryImpl @Inject constructor(
             }
             val updatedUser = currentUser.copy(favoriteRestaurants = updatedFavorites)
             
-            // Update in Firestore
             firestore.collection("users")
                 .document(currentUser.id)
                 .update("favoriteRestaurants", updatedFavorites)
                 .await()
-            
+
             _currentUser.value = updatedUser
-            
-            // Track BQ3: Favorite added
             analyticsService.logRestaurantFavorited(restaurantId, "", currentUser.id)
             
             Result.success(Unit)
@@ -191,15 +176,12 @@ class UserRepositoryImpl @Inject constructor(
             }
             val updatedUser = currentUser.copy(favoriteRestaurants = updatedFavorites)
             
-            // Update in Firestore
             firestore.collection("users")
                 .document(currentUser.id)
                 .update("favoriteRestaurants", updatedFavorites)
                 .await()
-            
+
             _currentUser.value = updatedUser
-            
-            // Track unfavorite
             analyticsService.logRestaurantUnfavorited(restaurantId, currentUser.id)
             
             Result.success(Unit)

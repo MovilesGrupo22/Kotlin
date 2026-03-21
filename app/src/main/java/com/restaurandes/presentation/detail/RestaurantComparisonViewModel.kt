@@ -102,7 +102,6 @@ class RestaurantComparisonViewModel @Inject constructor(
                 return@launch
             }
 
-            // No secondary ID — show picker with smart suggestion
             val suggested = others.maxByOrNull { candidate ->
                 comparisonScore(
                     candidate = candidate,

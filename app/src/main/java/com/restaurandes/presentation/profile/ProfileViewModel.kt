@@ -28,7 +28,6 @@ class ProfileViewModel @Inject constructor(
 
     init {
         loadUserProfile()
-        // Track BQ2: Profile section view
         analyticsService.logSectionView(AnalyticsService.AppSection.PROFILE, null)
     }
 
@@ -47,12 +46,8 @@ class ProfileViewModel @Inject constructor(
     fun logout() {
         viewModelScope.launch {
             userRepository.signOut().fold(
-                onSuccess = {
-                    // Navigation handled by UI
-                },
-                onFailure = {
-                    // Handle error if needed
-                }
+                onSuccess = { },
+                onFailure = { }
             )
         }
     }

@@ -114,7 +114,6 @@ private fun RestaurantDetailContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        // Restaurant Image
         AsyncImage(
             model = restaurant.imageUrl,
             contentDescription = restaurant.name,
@@ -134,7 +133,6 @@ private fun RestaurantDetailContent(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Restaurant Name and Category
             Text(
                 text = restaurant.name,
                 style = MaterialTheme.typography.headlineMedium,
@@ -172,7 +170,6 @@ private fun RestaurantDetailContent(
                 }
             }
 
-            // Status Badge
             Surface(
                 color = if (restaurant.isCurrentlyOpen()) 
                     MaterialTheme.colorScheme.primaryContainer 
@@ -193,7 +190,6 @@ private fun RestaurantDetailContent(
 
             HorizontalDivider()
 
-            // Description
             Text(
                 text = "Descripción",
                 style = MaterialTheme.typography.titleMedium,
@@ -207,7 +203,6 @@ private fun RestaurantDetailContent(
 
             HorizontalDivider()
 
-            // Tags
             if (restaurant.tags.isNotEmpty()) {
                 Text(
                     text = "Características",
@@ -229,7 +224,6 @@ private fun RestaurantDetailContent(
 
             HorizontalDivider()
 
-            // Contact Info
             Text(
                 text = "Información de Contacto",
                 style = MaterialTheme.typography.titleMedium,
@@ -271,7 +265,6 @@ private fun RestaurantDetailContent(
 
             HorizontalDivider()
 
-            // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
