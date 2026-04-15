@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -118,6 +119,18 @@ fun HomeScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
+            uiState.contextCanvas?.let { contextCanvas ->
+                ContextCanvasCard(
+                    contextCanvas = contextCanvas,
+                    onActionClick = {
+                        if (uiState.selectedCategory != "Open") {
+                            viewModel.filterByCategory("Open")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
             when {
                 uiState.isLoading -> {
                     Box(
@@ -140,6 +153,83 @@ fun HomeScreen(
                     RestaurantList(
                         restaurants = uiState.restaurants,
                         onRestaurantClick = onNavigateToDetail
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContextCanvasCard(
+    contextCanvas: HomeContextCanvas,
+    onActionClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val (containerColor, contentColor, actionContainerColor) = when (contextCanvas.tone) {
+        HomeContextTone.POSITIVE -> Triple(
+            Color(0xFFE7F6EA),
+            Color(0xFF2E7D32),
+            Color(0xFFC8E6C9)
+        )
+        HomeContextTone.WARNING -> Triple(
+            Color(0xFFE8F1FB),
+            Color(0xFF336699),
+            Color(0xFFD8E8FA)
+        )
+        HomeContextTone.INFO -> Triple(
+            Color(0xFFF3F0EB),
+            Color(0xFF7A5C3E),
+            Color(0xFFEADBC8)
+        )
+    }
+
+    val icon = when (contextCanvas.tone) {
+        HomeContextTone.POSITIVE -> Icons.Default.WbSunny
+        HomeContextTone.WARNING -> Icons.Default.ModeNight
+        HomeContextTone.INFO -> Icons.Default.Schedule
+    }
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = containerColor,
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(18.dp)
+            )
+
+            Text(
+                text = contextCanvas.message,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor
+            )
+
+            contextCanvas.actionLabel?.let { actionLabel ->
+                Surface(
+                    onClick = onActionClick,
+                    color = actionContainerColor,
+                    shape = MaterialTheme.shapes.small,
+                    enabled = actionLabel != "Open filter: ON"
+                ) {
+                    Text(
+                        text = actionLabel,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
