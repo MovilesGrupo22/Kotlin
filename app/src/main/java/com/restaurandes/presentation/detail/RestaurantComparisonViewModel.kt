@@ -32,7 +32,8 @@ data class RestaurantComparisonUiState(
     val error: String? = null,
     val availableRestaurants: List<Restaurant> = emptyList(),
     val showRestaurantPicker: Boolean = false,
-    val suggestedRestaurant: Restaurant? = null
+    val suggestedRestaurant: Restaurant? = null,
+    val searchQuery: String = ""
 )
 
 @HiltViewModel
@@ -131,6 +132,10 @@ class RestaurantComparisonViewModel @Inject constructor(
 
     fun hideRestaurantPicker() {
         _uiState.value = _uiState.value.copy(showRestaurantPicker = false)
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 
     fun selectSecondaryRestaurant(restaurant: Restaurant) {
