@@ -1,5 +1,7 @@
 package com.restaurandes.presentation.detail
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,39 +16,43 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.restaurandes.domain.model.Restaurant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,95 +64,26 @@ fun RestaurantComparisonScreen(
     viewModel: RestaurantComparisonViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val sheetState = rememberModalBottomSheetState()
 
     LaunchedEffect(primaryRestaurantId, secondaryRestaurantId) {
         viewModel.loadRestaurants(primaryRestaurantId, secondaryRestaurantId)
     }
 
-    if (uiState.showRestaurantPicker) {
-        ModalBottomSheet(
-            onDismissRequest = { viewModel.hideRestaurantPicker() },
-            sheetState = sheetState
-        ) {
-            Text(
-                text = "Elige un restaurante para comparar",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            val suggested = uiState.suggestedRestaurant
-            if (suggested != null) {
-                Text(
-                    text = "Sugerido para ti",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                        .clickable { viewModel.selectSecondaryRestaurant(suggested) },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = suggested.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "${suggested.category} · ${suggested.priceRange} · ${String.format("%.1f", suggested.rating)}★",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider()
-            }
-
-            LazyColumn {
-                items(uiState.availableRestaurants.filter { it.id != suggested?.id }) { restaurant ->
-                    ListItem(
-                        headlineContent = { Text(restaurant.name) },
-                        supportingContent = {
-                            Text("${restaurant.category} • ${restaurant.priceRange} • ${String.format("%.1f", restaurant.rating)}★")
-                        },
-                        modifier = Modifier.clickable { viewModel.selectSecondaryRestaurant(restaurant) }
-                    )
-                    HorizontalDivider()
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
+    val showSummary = uiState.primaryRestaurant != null &&
+            uiState.secondaryRestaurant != null &&
+            !uiState.showRestaurantPicker
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Comparar", fontWeight = FontWeight.SemiBold) },
+                title = { Text("Compare restaurants", fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    if (uiState.primaryRestaurant != null) {
+                    if (showSummary) {
                         IconButton(onClick = { viewModel.showRestaurantPicker() }) {
                             Icon(Icons.Default.SwapHoriz, contentDescription = "Cambiar")
                         }
@@ -181,33 +118,194 @@ fun RestaurantComparisonScreen(
                 }
             }
 
-            uiState.primaryRestaurant != null && uiState.secondaryRestaurant != null -> {
-                ComparisonContent(
-                    primaryRestaurant = uiState.primaryRestaurant!!,
-                    secondaryRestaurant = uiState.secondaryRestaurant!!,
-                    paddingValues = paddingValues,
-                    onNavigateToDetail = onNavigateToDetail
+            showSummary -> {
+                ComparisonSummaryContent(
+                    primary = uiState.primaryRestaurant!!,
+                    secondary = uiState.secondaryRestaurant!!,
+                    paddingValues = paddingValues
                 )
             }
 
-            uiState.primaryRestaurant != null && uiState.secondaryRestaurant == null && !uiState.showRestaurantPicker -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Selecciona un restaurante para comparar",
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                        Button(onClick = { viewModel.showRestaurantPicker() }) {
-                            Text("Elegir restaurante")
+            uiState.primaryRestaurant != null -> {
+                val searchQuery = uiState.searchQuery
+                val filtered = remember(uiState.availableRestaurants, searchQuery) {
+                    if (searchQuery.isBlank()) {
+                        uiState.availableRestaurants
+                    } else {
+                        val q = searchQuery.lowercase()
+                        uiState.availableRestaurants.filter { r ->
+                            r.name.lowercase().contains(q) ||
+                                    r.category.lowercase().contains(q) ||
+                                    r.tags.any { it.lowercase().contains(q) }
                         }
                     }
+                }
+                SelectionContent(
+                    primary = uiState.primaryRestaurant!!,
+                    selected = uiState.secondaryRestaurant,
+                    availableRestaurants = filtered,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = viewModel::updateSearchQuery,
+                    onSelectRestaurant = viewModel::selectSecondaryRestaurant,
+                    paddingValues = paddingValues
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectionContent(
+    primary: ComparableRestaurant,
+    selected: ComparableRestaurant?,
+    availableRestaurants: List<Restaurant>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onSelectRestaurant: (Restaurant) -> Unit,
+    paddingValues: PaddingValues
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                text = "Choose another restaurant to compare with ${primary.restaurant.name}.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                RestaurantPickerCard(
+                    label = "Current",
+                    restaurant = primary.restaurant,
+                    modifier = Modifier.weight(1f)
+                )
+                RestaurantPickerCard(
+                    label = "Selected",
+                    restaurant = selected?.restaurant,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        item {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search by name, category or tag") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium
+            )
+        }
+
+        item {
+            Text(
+                text = "Available restaurants",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        items(availableRestaurants) { restaurant ->
+            val isSelected = selected?.restaurant?.id == restaurant.id
+            RestaurantListItem(
+                restaurant = restaurant,
+                isSelected = isSelected,
+                onClick = { onSelectRestaurant(restaurant) }
+            )
+            HorizontalDivider()
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun RestaurantPickerCard(
+    label: String,
+    restaurant: Restaurant?,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            if (restaurant != null) {
+                Column {
+                    AsyncImage(
+                        model = restaurant.imageUrl,
+                        contentDescription = restaurant.name,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentScale = ContentScale.Crop,
+                        error = ColorPainter(Color.Gray),
+                        placeholder = ColorPainter(Color.LightGray)
+                    )
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            text = restaurant.name,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "${restaurant.category} • ${restaurant.priceRange}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Surface(
+                            color = if (restaurant.isCurrentlyOpen())
+                                MaterialTheme.colorScheme.primaryContainer
+                            else
+                                MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.extraSmall
+                        ) {
+                            Text(
+                                text = if (restaurant.isCurrentlyOpen()) "Open" else "Closed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (restaurant.isCurrentlyOpen())
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Not selected",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -215,147 +313,214 @@ fun RestaurantComparisonScreen(
 }
 
 @Composable
-private fun ComparisonContent(
-    primaryRestaurant: ComparableRestaurant,
-    secondaryRestaurant: ComparableRestaurant,
-    paddingValues: PaddingValues,
-    onNavigateToDetail: (String) -> Unit
+private fun RestaurantListItem(
+    restaurant: Restaurant,
+    isSelected: Boolean,
+    onClick: () -> Unit
 ) {
-    Column(
+    Row(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(16.dp)
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "Comparando 2 restaurantes",
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        AsyncImage(
+            model = restaurant.imageUrl,
+            contentDescription = restaurant.name,
+            modifier = Modifier
+                .size(60.dp)
+                .clip(MaterialTheme.shapes.small),
+            contentScale = ContentScale.Crop,
+            error = ColorPainter(Color.Gray),
+            placeholder = ColorPainter(Color.LightGray)
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            ComparisonCard(
-                comparableRestaurant = primaryRestaurant,
-                otherRestaurant = secondaryRestaurant,
-                modifier = Modifier.weight(1f),
-                onNavigateToDetail = onNavigateToDetail
-            )
-            ComparisonCard(
-                comparableRestaurant = secondaryRestaurant,
-                otherRestaurant = primaryRestaurant,
-                modifier = Modifier.weight(1f),
-                onNavigateToDetail = onNavigateToDetail
-            )
-        }
-    }
-}
-
-@Composable
-private fun ComparisonCard(
-    comparableRestaurant: ComparableRestaurant,
-    otherRestaurant: ComparableRestaurant,
-    modifier: Modifier = Modifier,
-    onNavigateToDetail: (String) -> Unit
-) {
-    val restaurant = comparableRestaurant.restaurant
-    val winsRating = restaurant.rating >= otherRestaurant.restaurant.rating
-    val winsPrice = restaurant.priceRange.length <= otherRestaurant.restaurant.priceRange.length
-    val winsDistance = comparableRestaurant.distanceKm <= otherRestaurant.distanceKm
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = restaurant.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
             )
-
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = restaurant.category,
+                text = "${restaurant.category} • ${restaurant.priceRange} • ★ ${String.format("%.1f", restaurant.rating)} • ${restaurant.reviewCount} reviews",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ComparisonMetricRow(
-                icon = {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                },
-                value = String.format("%.1f", restaurant.rating),
-                highlight = winsRating
-            )
-            ComparisonMetricRow(
-                icon = {
-                    Text(text = restaurant.priceRange, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-                },
-                value = "Precio",
-                highlight = winsPrice
-            )
-            ComparisonMetricRow(
-                icon = {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                },
-                value = String.format("%.1f km", comparableRestaurant.distanceKm),
-                highlight = winsDistance
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Button(
-                onClick = { onNavigateToDetail(restaurant.id) },
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Text("Detalles", style = MaterialTheme.typography.labelSmall)
+        }
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .border(
+                    width = 2.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    shape = CircleShape
+                )
+                .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(14.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ComparisonMetricRow(
-    icon: @Composable () -> Unit,
-    value: String,
-    highlight: Boolean
+private fun ComparisonSummaryContent(
+    primary: ComparableRestaurant,
+    secondary: ComparableRestaurant,
+    paddingValues: PaddingValues
 ) {
-    Row(
+    val p = primary.restaurant
+    val s = secondary.restaurant
+
+    LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(modifier = Modifier.size(16.dp), contentAlignment = Alignment.Center) {
-            icon()
-        }
-        Text(
-            text = value,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (highlight) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.primary
+        item {
+            Text(
+                text = "Comparison summary",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
+        }
+
+        item {
+            ComparisonRow(
+                label = "Category",
+                primaryValue = p.category,
+                secondaryValue = s.category
+            )
+        }
+
+        item {
+            ComparisonRow(
+                label = "Price range",
+                primaryValue = p.priceRange,
+                secondaryValue = s.priceRange
+            )
+        }
+
+        item {
+            ComparisonRow(
+                label = "Rating",
+                primaryValue = "${String.format("%.1f", p.rating)} ★",
+                secondaryValue = "${String.format("%.1f", s.rating)} ★",
+                primaryWins = p.rating >= s.rating,
+                secondaryWins = s.rating > p.rating
+            )
+        }
+
+        item {
+            ComparisonRow(
+                label = "Reviews",
+                primaryValue = p.reviewCount.toString(),
+                secondaryValue = s.reviewCount.toString()
+            )
+        }
+
+        item {
+            ComparisonRow(
+                label = "Open now",
+                primaryValue = if (p.isCurrentlyOpen()) "Yes" else "No",
+                secondaryValue = if (s.isCurrentlyOpen()) "Yes" else "No"
+            )
+        }
+
+        item {
+            ComparisonRow(
+                label = "Opening hours",
+                primaryValue = p.openingHours,
+                secondaryValue = s.openingHours
+            )
+        }
+
+        item {
+            ComparisonRow(
+                label = "Address",
+                primaryValue = p.address,
+                secondaryValue = s.address
+            )
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun ComparisonRow(
+    label: String,
+    primaryValue: String,
+    secondaryValue: String,
+    primaryWins: Boolean = false,
+    secondaryWins: Boolean = false
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ComparisonValueChip(
+                    value = primaryValue,
+                    highlight = primaryWins,
+                    modifier = Modifier.weight(1f)
+                )
+                ComparisonValueChip(
+                    value = secondaryValue,
+                    highlight = secondaryWins,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
+
+@Composable
+private fun ComparisonValueChip(
+    value: String,
+    highlight: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        color = if (highlight) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.small
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (highlight) FontWeight.SemiBold else FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+    }
+}
+
