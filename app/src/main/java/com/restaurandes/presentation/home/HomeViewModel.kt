@@ -37,7 +37,7 @@ class HomeViewModel @Inject constructor(
             getRestaurantsUseCase().fold(
                 onSuccess = { restaurants ->
                     val categories = restaurants.map { it.category }.distinct().sorted()
-                    val selectedCategory = _uiState.value.selectedCategory
+                    val selectedCategory = getInitialContextCategory(_uiState.value.selectedCategory)
                     val filteredRestaurants = applyFilter(restaurants, selectedCategory)
 
                     _uiState.update {
@@ -47,6 +47,7 @@ class HomeViewModel @Inject constructor(
                             allRestaurants = restaurants,
                             availableCategories = categories,
                             error = null,
+                            selectedCategory = selectedCategory,
                             contextCanvas = buildContextCanvas(restaurants, selectedCategory)
                         )
                     }
@@ -142,31 +143,45 @@ class HomeViewModel @Inject constructor(
         val openFilterEnabled = selectedCategory == "Open"
         val actionLabel = if (openFilterEnabled) "Open filter: ON" else "Show open only"
         val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val timeMessage = getTimeContextMessage(currentHour)
 
         return when {
-            openCount == 0 || openCount * 2 < totalCount -> HomeContextCanvas(
-                message = "Most restaurants may be closed now.",
+            currentHour in 6..20 -> HomeContextCanvas(
+                message = timeMessage,
                 actionLabel = actionLabel,
-                tone = HomeContextTone.WARNING
-            )
-
-            currentHour in 5..10 -> HomeContextCanvas(
-                message = "Good morning! Breakfast time.",
-                actionLabel = actionLabel,
-                tone = HomeContextTone.POSITIVE
+                tone = if (openCount > 0) HomeContextTone.POSITIVE else HomeContextTone.WARNING
             )
 
             openFilterEnabled -> HomeContextCanvas(
-                message = "Showing restaurants that are open right now.",
+                message = timeMessage,
                 actionLabel = "Open filter: ON",
-                tone = HomeContextTone.INFO
+                tone = HomeContextTone.WARNING
             )
 
             else -> HomeContextCanvas(
-                message = "$openCount of $totalCount restaurants are open now.",
+                message = timeMessage,
                 actionLabel = actionLabel,
-                tone = HomeContextTone.INFO
+                tone = if (openCount * 2 < totalCount) HomeContextTone.WARNING else HomeContextTone.INFO
             )
+        }
+    }
+
+    private fun getInitialContextCategory(currentCategory: String): String {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        return if (currentCategory == "All" && hour in 6..20) {
+            "Open"
+        } else {
+            currentCategory
+        }
+    }
+
+    private fun getTimeContextMessage(hour: Int): String {
+        return when {
+            hour in 6..10 -> "🌅 Good morning! Breakfast time."
+            hour in 11..13 -> "☀️ Lunch time! Check what's open."
+            hour in 14..17 -> "🕑 Afternoon snack time."
+            hour in 18..20 -> "🌆 Dinner time! Find a restaurant."
+            else -> "🌙 Most restaurants may be closed now."
         }
     }
 }
