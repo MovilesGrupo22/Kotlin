@@ -5,9 +5,11 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 
+import androidx.fragment.app.FragmentActivity
+
 class BiometricAuthManager(
-    private val activity: ComponentActivity
-) {
+    private val activity: FragmentActivity
+)
 
     companion object {
         const val AUTHENTICATORS =
