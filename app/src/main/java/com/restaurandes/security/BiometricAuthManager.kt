@@ -9,7 +9,7 @@ import androidx.fragment.app.FragmentActivity
 
 class BiometricAuthManager(
     private val activity: FragmentActivity
-)
+) {
 
     companion object {
         const val AUTHENTICATORS =
