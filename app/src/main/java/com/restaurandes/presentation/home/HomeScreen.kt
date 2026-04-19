@@ -131,6 +131,14 @@ fun HomeScreen(
                 )
             }
 
+            uiState.trendingCampusInsight?.let { insight ->
+                TrendingCampusSection(
+                    insight = insight,
+                    onRestaurantClick = onNavigateToDetail,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
+
             when {
                 uiState.isLoading -> {
                     Box(
@@ -152,8 +160,131 @@ fun HomeScreen(
                 else -> {
                     RestaurantList(
                         restaurants = uiState.restaurants,
-                        onRestaurantClick = onNavigateToDetail
+                        onRestaurantClick = onNavigateToDetail,
+                        modifier = Modifier.weight(1f)
                     )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TrendingCampusSection(
+    insight: TrendingCampusInsight,
+    onRestaurantClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val restaurant = insight.restaurant
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Trending now on campus",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+
+        Card(
+            onClick = { onRestaurantClick(restaurant.id) },
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .widthIn(max = 260.dp)
+                .fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column {
+                Box {
+                    AsyncImage(
+                        model = restaurant.imageUrl,
+                        contentDescription = restaurant.name,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        contentScale = ContentScale.Crop,
+                        error = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray),
+                        placeholder = androidx.compose.ui.graphics.painter.ColorPainter(Color.LightGray)
+                    )
+
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(10.dp),
+                        color = Color.White.copy(alpha = 0.92f),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(20.dp)
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = restaurant.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Text(
+                        text = insight.reason,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = restaurant.category,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "${restaurant.rating}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = restaurant.priceRange,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (restaurant.isCurrentlyOpen()) {
+                        AssistChip(
+                            onClick = { },
+                            label = { Text("Open") },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = Color(0xFFDFF3E3),
+                                labelColor = Color(0xFF1B7F3A)
+                            )
+                        )
+                    }
                 }
             }
         }

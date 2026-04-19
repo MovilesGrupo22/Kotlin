@@ -39,6 +39,7 @@ class HomeViewModel @Inject constructor(
                     val categories = restaurants.map { it.category }.distinct().sorted()
                     val selectedCategory = getInitialContextCategory(_uiState.value.selectedCategory)
                     val filteredRestaurants = applyFilter(restaurants, selectedCategory)
+                    val trendingCampusInsight = buildTrendingCampusInsight(restaurants)
 
                     _uiState.update {
                         it.copy(
@@ -48,7 +49,8 @@ class HomeViewModel @Inject constructor(
                             availableCategories = categories,
                             error = null,
                             selectedCategory = selectedCategory,
-                            contextCanvas = buildContextCanvas(restaurants, selectedCategory)
+                            contextCanvas = buildContextCanvas(restaurants, selectedCategory),
+                            trendingCampusInsight = trendingCampusInsight
                         )
                     }
                 },
@@ -71,6 +73,7 @@ class HomeViewModel @Inject constructor(
             getNearbyRestaurantsUseCase(radiusKm = 5.0).fold(
                 onSuccess = { restaurants ->
                     val categories = restaurants.map { it.category }.distinct().sorted()
+                    val trendingCampusInsight = buildTrendingCampusInsight(restaurants)
                     
                     _uiState.update {
                         it.copy(
@@ -80,7 +83,8 @@ class HomeViewModel @Inject constructor(
                             availableCategories = categories,
                             error = null,
                             selectedCategory = "Nearby",
-                            contextCanvas = buildContextCanvas(restaurants, "Nearby")
+                            contextCanvas = buildContextCanvas(restaurants, "Nearby"),
+                            trendingCampusInsight = trendingCampusInsight
                         )
                     }
                 },
@@ -183,5 +187,32 @@ class HomeViewModel @Inject constructor(
             hour in 18..20 -> "🌆 Dinner time! Find a restaurant."
             else -> "🌙 Most restaurants may be closed now."
         }
+    }
+
+    private fun buildTrendingCampusInsight(restaurants: List<Restaurant>): TrendingCampusInsight? {
+        if (restaurants.isEmpty()) return null
+
+        val trendingRestaurant = restaurants.maxWithOrNull(
+            compareBy<Restaurant> { if (it.isCurrentlyOpen()) 1 else 0 }
+                .thenBy { it.rating }
+                .thenBy { it.reviewCount }
+                .thenBy { it.tags.size }
+        ) ?: return null
+
+        val reason = when {
+            trendingRestaurant.isCurrentlyOpen() && trendingRestaurant.reviewCount > 0 ->
+                "Open now with strong campus feedback"
+            trendingRestaurant.isCurrentlyOpen() ->
+                "Open now and highly rated"
+            trendingRestaurant.reviewCount > 0 ->
+                "Popular pick based on reviews"
+            else ->
+                "Recommended from current restaurant data"
+        }
+
+        return TrendingCampusInsight(
+            restaurant = trendingRestaurant,
+            reason = reason
+        )
     }
 }

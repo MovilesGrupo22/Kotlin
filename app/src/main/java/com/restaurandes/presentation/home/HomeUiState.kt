@@ -14,6 +14,11 @@ data class HomeContextCanvas(
     val tone: HomeContextTone = HomeContextTone.INFO
 )
 
+data class TrendingCampusInsight(
+    val restaurant: Restaurant,
+    val reason: String
+)
+
 data class HomeUiState(
     val isLoading: Boolean = false,
     val restaurants: List<Restaurant> = emptyList(),
@@ -22,5 +27,6 @@ data class HomeUiState(
     val error: String? = null,
     val userLocation: Pair<Double, Double>? = null,
     val selectedCategory: String = "All",
-    val contextCanvas: HomeContextCanvas? = null
+    val contextCanvas: HomeContextCanvas? = null,
+    val trendingCampusInsight: TrendingCampusInsight? = null
 )
