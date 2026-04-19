@@ -17,9 +17,10 @@ import com.restaurandes.presentation.navigation.Screen
 import com.restaurandes.security.BiometricAuthManager
 import com.restaurandes.ui.theme.RestaurandesTheme
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.fragment.app.FragmentActivity
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private lateinit var biometricAuthManager: BiometricAuthManager
 
