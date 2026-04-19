@@ -110,6 +110,8 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.0.0-rc01")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.0-rc01")
 
+    implementation("androidx.biometric:biometric:1.1.0")
+
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
@@ -123,4 +125,5 @@ dependencies {
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
 }

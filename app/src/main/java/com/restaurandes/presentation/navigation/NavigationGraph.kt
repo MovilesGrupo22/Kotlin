@@ -23,6 +23,7 @@ fun NavigationGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route
+    onBiometricLoginRequired: (((() -> Unit)) -> Unit)? = null
 ) {
     NavHost(
         navController = navController,
@@ -35,12 +36,15 @@ fun NavigationGraph(
                     navController.navigate(Screen.Register.route)
                 },
                 onLoginSuccess = {
+                    val goHome = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 }
-            )
-        }
+                onBiometricLoginRequired?.invoke(goHome) ?: goHome()
+            }
+        )
+    }
 
         composable(Screen.Register.route) {
             RegisterScreen(
