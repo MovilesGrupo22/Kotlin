@@ -24,7 +24,7 @@ typealias BiometricLoginHandler = ((() -> Unit) -> Unit)
 fun NavigationGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Home.route
+    startDestination: String = Screen.Home.route,
     onBiometricLoginRequired: BiometricLoginHandler? = null
 ) {
     NavHost(
