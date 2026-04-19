@@ -18,12 +18,14 @@ import com.restaurandes.presentation.map.MapScreen
 import com.restaurandes.presentation.profile.ProfileScreen
 import com.restaurandes.presentation.search.SearchScreen
 
+
+typealias BiometricLoginHandler = ((() -> Unit) -> Unit)
 @Composable
 fun NavigationGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route
-    onBiometricLoginRequired: (((() -> Unit)) -> Unit)? = null
+    onBiometricLoginRequired: BiometricLoginHandler? = null
 ) {
     NavHost(
         navController = navController,
