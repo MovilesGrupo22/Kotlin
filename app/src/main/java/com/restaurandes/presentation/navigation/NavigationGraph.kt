@@ -15,6 +15,7 @@ import com.restaurandes.presentation.detail.RestaurantReviewsScreen
 import com.restaurandes.presentation.favorites.FavoritesScreen
 import com.restaurandes.presentation.home.HomeScreen
 import com.restaurandes.presentation.map.MapScreen
+import com.restaurandes.presentation.analytics.AnalyticsScreen
 import com.restaurandes.presentation.profile.ProfileScreen
 import com.restaurandes.presentation.search.SearchScreen
 
@@ -163,11 +164,18 @@ fun NavigationGraph(
         composable(Screen.Profile.route) {
             ProfileScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToAnalytics = { navController.navigate(Screen.Analytics.route) },
                 onLogout = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(Screen.Analytics.route) {
+            AnalyticsScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

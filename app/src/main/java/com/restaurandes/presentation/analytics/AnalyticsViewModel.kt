@@ -1,0 +1,50 @@
+package com.restaurandes.presentation.analytics
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.restaurandes.domain.model.RestaurantAnalytics
+import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class AnalyticsUiState(
+    val isLoading: Boolean = false,
+    val topViewed: List<RestaurantAnalytics> = emptyList(),
+    val topInteracted: List<RestaurantAnalytics> = emptyList(),
+    val error: String? = null
+)
+
+@HiltViewModel
+class AnalyticsViewModel @Inject constructor(
+    private val analyticsRepository: RestaurantAnalyticsRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(AnalyticsUiState(isLoading = true))
+    val uiState: StateFlow<AnalyticsUiState> = _uiState.asStateFlow()
+
+    init {
+        loadData()
+    }
+
+    fun loadData() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
+            val viewedResult = analyticsRepository.getTopViewedRestaurants(limit = 8)
+            val interactedResult = analyticsRepository.getTopInteractedRestaurants(limit = 8)
+
+            val error = viewedResult.exceptionOrNull() ?: interactedResult.exceptionOrNull()
+
+            _uiState.value = AnalyticsUiState(
+                isLoading = false,
+                topViewed = viewedResult.getOrNull().orEmpty(),
+                topInteracted = interactedResult.getOrNull().orEmpty(),
+                error = error?.message
+            )
+        }
+    }
+}
