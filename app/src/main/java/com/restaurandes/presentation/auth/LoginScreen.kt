@@ -52,8 +52,19 @@ fun LoginScreen(
             val idToken = account.idToken
             if (idToken != null) {
                 viewModel.signInWithGoogle(idToken)
+            } else {
+                viewModel.setError("Google no devolvió un token. Verifica que el SHA-1 del proyecto esté registrado en Firebase Console.")
             }
-        } catch (_: ApiException) {}
+        } catch (e: ApiException) {
+            val message = when (e.statusCode) {
+                10 -> "Error de configuración (código 10): el SHA-1 del keystore no coincide con el registrado en Firebase Console."
+                12501 -> "Inicio de sesión cancelado."
+                12502 -> "Inicio de sesión ya en progreso."
+                7 -> "Sin conexión a internet."
+                else -> "Error de Google Sign-In (código ${e.statusCode})."
+            }
+            viewModel.setError(message)
+        }
     }
 
     LaunchedEffect(uiState.isSuccess) {

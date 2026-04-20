@@ -102,6 +102,10 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    fun setError(message: String) {
+        _uiState.value = _uiState.value.copy(isLoading = false, error = message)
+    }
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
