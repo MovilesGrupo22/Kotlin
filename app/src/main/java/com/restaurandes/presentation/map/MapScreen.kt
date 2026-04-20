@@ -4,13 +4,18 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.location.Location
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
@@ -71,7 +76,6 @@ fun MapScreen(
     val uniandes = LatLng(4.6019, -74.0661)
     val cameraPositionState = rememberCameraPositionState()
 
-    var userLatLng by remember { mutableStateOf<LatLng?>(null) }
     var locationMessage by remember { mutableStateOf<String?>(null) }
     var isLocatingUser by remember { mutableStateOf(true) }
     var hasAdjustedCamera by remember { mutableStateOf(false) }
@@ -95,9 +99,7 @@ fun MapScreen(
             val location: Location? =
                 fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
 
-            if (location != null) {
-                userLatLng = LatLng(location.latitude, location.longitude)
-            } else {
+            if (location == null) {
                 locationMessage = "No pude obtener tu ubicación. Mostrando restaurantes cerca de Uniandes."
             }
         } catch (_: Exception) {
@@ -199,16 +201,15 @@ fun MapScreen(
                     }
                 }
 
-                userLatLng?.let { latLng ->
-                    Marker(
-                        state = MarkerState(position = latLng),
-                        title = "Tu ubicación",
-                        icon = BitmapDescriptorFactory.defaultMarker(
-                            BitmapDescriptorFactory.HUE_AZURE
-                        )
-                    )
-                }
             }
+
+            PriceFilterRow(
+                selectedFilter = uiState.selectedPriceFilter,
+                onFilterSelected = viewModel::setSelectedPriceFilter,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp)
+            )
 
             when {
                 uiState.isLoading || isLocatingUser -> {
@@ -277,6 +278,40 @@ private fun getMarkerColor(category: String): Float {
         "mexicana" -> BitmapDescriptorFactory.HUE_ROSE
         "asiática", "asiatica", "japonesa" -> BitmapDescriptorFactory.HUE_CYAN
         else -> BitmapDescriptorFactory.HUE_MAGENTA
+    }
+}
+
+@Composable
+private fun PriceFilterRow(
+    selectedFilter: String?,
+    onFilterSelected: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val prices = listOf("$", "$$", "$$$")
+
+    Row(
+        modifier = modifier
+            .background(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                shape = RoundedCornerShape(24.dp)
+            )
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        Text(
+            text = "Precio:",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        prices.forEach { price ->
+            FilterChip(
+                selected = selectedFilter == price,
+                onClick = { onFilterSelected(price) },
+                label = { Text(price) }
+            )
+        }
     }
 }
 
