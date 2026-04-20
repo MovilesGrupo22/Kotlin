@@ -3,6 +3,7 @@ package com.restaurandes.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
+import com.restaurandes.domain.model.Review
 import com.restaurandes.domain.model.User
 import com.restaurandes.domain.repository.ReviewRepository
 import com.restaurandes.domain.repository.UserRepository
@@ -17,7 +18,8 @@ data class ProfileUiState(
     val user: User? = null,
     val isLoading: Boolean = false,
     val reviewsCount: Int = 0,
-    val favoritesCount: Int = 0
+    val favoritesCount: Int = 0,
+    val reviews: List<Review> = emptyList()
 )
 
 @HiltViewModel
@@ -44,13 +46,18 @@ class ProfileViewModel @Inject constructor(
                     reviewRepository.getReviewsCountByUser(it.id).getOrDefault(0)
                 } ?: 0
 
+                val reviews = user?.let {
+                    reviewRepository.getReviewsByUser(it.id).getOrDefault(emptyList())
+                } ?: emptyList()
+
                 val favoritesCount = user?.favoriteRestaurants?.size ?: 0
 
                 _uiState.value = _uiState.value.copy(
                     user = user,
                     isLoading = false,
                     reviewsCount = reviewsCount,
-                    favoritesCount = favoritesCount
+                    favoritesCount = favoritesCount,
+                    reviews = reviews
                 )
             }
         }

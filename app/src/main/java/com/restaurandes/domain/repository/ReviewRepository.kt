@@ -8,4 +8,5 @@ interface ReviewRepository {
     suspend fun updateReview(review: Review): Result<Review>
     suspend fun deleteReview(reviewId: String): Result<Unit>
     suspend fun getReviewsCountByUser(userId: String): Result<Int>
+    suspend fun getReviewsByUser(userId: String): Result<List<Review>>
 }
