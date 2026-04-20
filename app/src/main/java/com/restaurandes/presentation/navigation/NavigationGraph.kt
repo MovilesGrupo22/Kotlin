@@ -18,11 +18,14 @@ import com.restaurandes.presentation.map.MapScreen
 import com.restaurandes.presentation.profile.ProfileScreen
 import com.restaurandes.presentation.search.SearchScreen
 
+
+typealias BiometricLoginHandler = ((() -> Unit) -> Unit)
 @Composable
 fun NavigationGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Home.route
+    startDestination: String = Screen.Home.route,
+    onBiometricLoginRequired: BiometricLoginHandler? = null
 ) {
     NavHost(
         navController = navController,
@@ -35,12 +38,15 @@ fun NavigationGraph(
                     navController.navigate(Screen.Register.route)
                 },
                 onLoginSuccess = {
+                    val goHome = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 }
-            )
-        }
+                onBiometricLoginRequired?.invoke(goHome) ?: goHome()
+            }
+        )
+    }
 
         composable(Screen.Register.route) {
             RegisterScreen(

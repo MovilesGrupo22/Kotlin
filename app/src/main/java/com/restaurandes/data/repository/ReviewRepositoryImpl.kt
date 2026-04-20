@@ -47,6 +47,36 @@ class ReviewRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getReviewsByUser(userId: String): Result<List<Review>> {
+        return try {
+            val snapshot = firestore.collection(COLLECTION_REVIEWS)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            val reviews = snapshot.documents.mapNotNull { doc ->
+                try {
+                    Review(
+                        id = doc.id,
+                        restaurantId = doc.getString("restaurantId") ?: "",
+                        userId = doc.getString("userId") ?: "",
+                        userName = doc.getString("userName") ?: "Usuario",
+                        rating = doc.getDouble("rating") ?: 0.0,
+                        comment = doc.getString("comment") ?: "",
+                        timestamp = doc.getLong("timestamp") ?: 0L,
+                        imageUrls = (doc.get("imageUrls") as? List<*>)?.filterIsInstance<String>().orEmpty()
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }.sortedByDescending { it.timestamp }
+
+            Result.success(reviews)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun addReview(review: Review): Result<Review> {
         return try {
             val document = firestore.collection(COLLECTION_REVIEWS).document()
@@ -132,5 +162,18 @@ class ReviewRepositoryImpl @Inject constructor(
                 )
             )
             .await()
+    }
+
+    override suspend fun getReviewsCountByUser(userId: String): Result<Int> {
+        return try {
+            val snapshot = firestore.collection(COLLECTION_REVIEWS)
+                .whereEqualTo("userId", userId)
+                .get()
+                .await()
+
+            Result.success(snapshot.size())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
