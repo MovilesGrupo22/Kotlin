@@ -14,6 +14,7 @@ import javax.inject.Inject
 data class MapUiState(
     val isLoading: Boolean = false,
     val restaurants: List<Restaurant> = emptyList(),
+    val selectedPriceFilter: String? = null,
     val error: String? = null
 )
 
@@ -25,6 +26,8 @@ class MapViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MapUiState(isLoading = true))
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
 
+    private var allRestaurants: List<Restaurant> = emptyList()
+
     init {
         loadRestaurants()
     }
@@ -35,14 +38,15 @@ class MapViewModel @Inject constructor(
 
             getRestaurantsUseCase().fold(
                 onSuccess = { restaurants ->
-                    _uiState.value = MapUiState(
+                    allRestaurants = restaurants
+                    _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        restaurants = restaurants,
+                        restaurants = applyFilter(restaurants, _uiState.value.selectedPriceFilter),
                         error = null
                     )
                 },
                 onFailure = { exception ->
-                    _uiState.value = MapUiState(
+                    _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         restaurants = emptyList(),
                         error = exception.message ?: "No se pudieron cargar los restaurantes"
@@ -50,5 +54,18 @@ class MapViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun setSelectedPriceFilter(price: String?) {
+        val newFilter = if (price == _uiState.value.selectedPriceFilter) null else price
+        _uiState.value = _uiState.value.copy(
+            selectedPriceFilter = newFilter,
+            restaurants = applyFilter(allRestaurants, newFilter)
+        )
+    }
+
+    private fun applyFilter(restaurants: List<Restaurant>, filter: String?): List<Restaurant> {
+        if (filter == null) return restaurants
+        return restaurants.filter { it.priceRange.trim() == filter }
     }
 }
