@@ -133,4 +133,16 @@ class ReviewRepositoryImpl @Inject constructor(
             )
             .await()
     }
+    override suspend fun getReviewsCountByUser(userId: String): Result<Int> {
+    return try {
+        val snapshot = firestore.collection(COLLECTION_REVIEWS)
+            .whereEqualTo("userId", userId)
+            .get()
+            .await()
+
+        Result.success(snapshot.size())
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+}
 }
