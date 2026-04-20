@@ -1,6 +1,7 @@
 package com.restaurandes.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
@@ -94,6 +95,26 @@ class UserRepositoryImpl @Inject constructor(
             analyticsService.logUserSession(firebaseUser.uid)
             
             Result.success(_currentUser.value ?: user)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun signInWithGoogle(idToken: String): Result<User> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            val firebaseUser = result.user ?: return Result.failure(Exception("Google authentication failed"))
+
+            getCurrentUser()
+            analyticsService.logSignIn("google", firebaseUser.uid)
+            analyticsService.logUserSession(firebaseUser.uid)
+
+            Result.success(_currentUser.value ?: User(
+                id = firebaseUser.uid,
+                email = firebaseUser.email ?: "",
+                name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "User"
+            ))
         } catch (e: Exception) {
             Result.failure(e)
         }
