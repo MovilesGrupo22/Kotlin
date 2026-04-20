@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(./gradlew signingReport)",
-      "Bash(keytool -list -v -keystore \"C:/Users/nicol/.android/debug.keystore\" -alias androiddebugkey -storepass android -keypass android)"
-    ]
-  }
-}
