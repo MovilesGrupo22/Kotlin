@@ -7,8 +7,10 @@ import com.restaurandes.domain.model.Restaurant
 import com.restaurandes.domain.model.getCurrentTimeSlot
 import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
 import com.restaurandes.domain.repository.RestaurantRepository
+import com.restaurandes.domain.repository.ReviewRepository
 import com.restaurandes.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +28,7 @@ data class RestaurantDetailUiState(
 class RestaurantDetailViewModel @Inject constructor(
     private val restaurantRepository: RestaurantRepository,
     private val userRepository: UserRepository,
+    private val reviewRepository: ReviewRepository,
     private val analyticsService: AnalyticsService,
     private val restaurantAnalyticsRepository: RestaurantAnalyticsRepository
 ) : ViewModel() {
@@ -38,25 +41,49 @@ class RestaurantDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
-                val result = restaurantRepository.getRestaurantById(restaurantId)
+                // These sources are independent, so we resolve them in parallel.
+                val restaurantDeferred = async { restaurantRepository.getRestaurantById(restaurantId) }
+                val currentUserDeferred = async { userRepository.getCurrentUser() }
+                val reviewsDeferred = async { reviewRepository.getReviewsByRestaurant(restaurantId) }
+
+                val result = restaurantDeferred.await()
+                val currentUser = currentUserDeferred.await().getOrNull()
+                val reviews = reviewsDeferred.await().getOrDefault(emptyList())
+
                 result.fold(
                     onSuccess = { restaurant ->
-                        val currentUser = userRepository.getCurrentUser().getOrNull()
                         val isFavorite = currentUser?.favoriteRestaurants?.contains(restaurantId) == true
+                        val restaurantWithFreshReviews = mergeRestaurantWithReviews(
+                            restaurant = restaurant,
+                            reviews = reviews
+                        )
 
                         _uiState.value = RestaurantDetailUiState(
-                            restaurant = restaurant,
+                            restaurant = restaurantWithFreshReviews,
                             isFavorite = isFavorite,
                             isLoading = false
                         )
 
                         val userId = currentUser?.id
-                        analyticsService.logRestaurantView(restaurantId, restaurant.name, userId)
-                        restaurantAnalyticsRepository.trackView(restaurantId, restaurant.name)
-                        restaurantAnalyticsRepository.trackCategoryExplored(
-                            restaurant.category,
-                            getCurrentTimeSlot()
+                        analyticsService.logRestaurantView(
+                            restaurantId,
+                            restaurantWithFreshReviews.name,
+                            userId
                         )
+
+                        launch {
+                            restaurantAnalyticsRepository.trackView(
+                                restaurantId,
+                                restaurantWithFreshReviews.name
+                            )
+                        }
+
+                        launch {
+                            restaurantAnalyticsRepository.trackCategoryExplored(
+                                restaurantWithFreshReviews.category,
+                                getCurrentTimeSlot()
+                            )
+                        }
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(
@@ -72,6 +99,18 @@ class RestaurantDetailViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun mergeRestaurantWithReviews(
+        restaurant: Restaurant,
+        reviews: List<com.restaurandes.domain.model.Review>
+    ): Restaurant {
+        if (reviews.isEmpty()) return restaurant
+
+        return restaurant.copy(
+            rating = reviews.map { it.rating }.average(),
+            reviewCount = reviews.size
+        )
     }
 
     fun toggleFavorite() {

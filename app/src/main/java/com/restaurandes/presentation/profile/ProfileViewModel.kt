@@ -8,9 +8,11 @@ import com.restaurandes.domain.model.User
 import com.restaurandes.domain.repository.ReviewRepository
 import com.restaurandes.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -41,23 +43,27 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            userRepository.observeCurrentUser().collect { user ->
-                val reviewsCount = user?.let {
-                    reviewRepository.getReviewsCountByUser(it.id).getOrDefault(0)
-                } ?: 0
+            userRepository.observeCurrentUser().collectLatest { user ->
+                if (user == null) {
+                    _uiState.value = ProfileUiState(isLoading = false)
+                    return@collectLatest
+                }
 
-                val reviews = user?.let {
-                    reviewRepository.getReviewsByUser(it.id).getOrDefault(emptyList())
-                } ?: emptyList()
-
-                val favoritesCount = user?.favoriteRestaurants?.size ?: 0
+                val resolvedUserDeferred = async { userRepository.getCurrentUser().getOrNull() }
+                val reviewsCountDeferred = async {
+                    reviewRepository.getReviewsCountByUser(user.id).getOrDefault(0)
+                }
+                val reviewsDeferred = async {
+                    reviewRepository.getReviewsByUser(user.id).getOrDefault(emptyList())
+                }
+                val resolvedUser = resolvedUserDeferred.await() ?: user
 
                 _uiState.value = _uiState.value.copy(
-                    user = user,
+                    user = resolvedUser,
                     isLoading = false,
-                    reviewsCount = reviewsCount,
-                    favoritesCount = favoritesCount,
-                    reviews = reviews
+                    reviewsCount = reviewsCountDeferred.await(),
+                    favoritesCount = resolvedUser.favoriteRestaurants.size,
+                    reviews = reviewsDeferred.await()
                 )
             }
         }
