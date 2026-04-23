@@ -4,6 +4,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.restaurandes.data.analytics.AnalyticsService
@@ -25,6 +26,7 @@ class UserRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore by lazy { Firebase.firestore }
     
     private val _currentUser = MutableStateFlow<User?>(null)
+    private var lastKnownUser: User? = null
     
     init {
         auth.addAuthStateListener { firebaseAuth ->
@@ -45,10 +47,17 @@ class UserRepositoryImpl @Inject constructor(
         return try {
             val firebaseUser = auth.currentUser
             if (firebaseUser != null) {
-                val doc = firestore.collection("users")
-                    .document(firebaseUser.uid)
-                    .get()
-                    .await()
+                val doc = try {
+                    firestore.collection("users")
+                        .document(firebaseUser.uid)
+                        .get()
+                        .await()
+                } catch (_: Exception) {
+                    firestore.collection("users")
+                        .document(firebaseUser.uid)
+                        .get(Source.CACHE)
+                        .await()
+                }
                 
                 val user = if (doc.exists()) {
                     User(
@@ -70,12 +79,13 @@ class UserRepositoryImpl @Inject constructor(
                     newUser
                 }
                 _currentUser.value = user
+                lastKnownUser = user
                 Result.success(user)
             } else {
                 Result.success(null)
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            lastKnownUser?.let { Result.success(it) } ?: Result.failure(e)
         }
     }
 
@@ -133,6 +143,7 @@ class UserRepositoryImpl @Inject constructor(
             
             saveUserToFirestore(user)
             _currentUser.value = user
+            lastKnownUser = user
             analyticsService.logSignUp("email", firebaseUser.uid)
             analyticsService.logUserSession(firebaseUser.uid)
             
@@ -161,6 +172,7 @@ class UserRepositoryImpl @Inject constructor(
         return try {
             saveUserToFirestore(user)
             _currentUser.value = user
+            lastKnownUser = user
             Result.success(user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -181,6 +193,7 @@ class UserRepositoryImpl @Inject constructor(
                 .await()
 
             _currentUser.value = updatedUser
+            lastKnownUser = updatedUser
             analyticsService.logRestaurantFavorited(restaurantId, "", currentUser.id)
             
             Result.success(Unit)
@@ -203,6 +216,7 @@ class UserRepositoryImpl @Inject constructor(
                 .await()
 
             _currentUser.value = updatedUser
+            lastKnownUser = updatedUser
             analyticsService.logRestaurantUnfavorited(restaurantId, currentUser.id)
             
             Result.success(Unit)
