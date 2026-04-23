@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
 import com.restaurandes.domain.model.Restaurant
+import com.restaurandes.domain.model.getCurrentTimeSlot
 import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
 import com.restaurandes.domain.repository.RestaurantRepository
 import com.restaurandes.domain.repository.UserRepository
@@ -52,6 +53,10 @@ class RestaurantDetailViewModel @Inject constructor(
                         val userId = currentUser?.id
                         analyticsService.logRestaurantView(restaurantId, restaurant.name, userId)
                         restaurantAnalyticsRepository.trackView(restaurantId, restaurant.name)
+                        restaurantAnalyticsRepository.trackCategoryExplored(
+                            restaurant.category,
+                            getCurrentTimeSlot()
+                        )
                     },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(

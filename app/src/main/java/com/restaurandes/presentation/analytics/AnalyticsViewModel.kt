@@ -2,6 +2,7 @@ package com.restaurandes.presentation.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.restaurandes.domain.model.CategoryTimeSlotStat
 import com.restaurandes.domain.model.RestaurantAnalytics
 import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +16,7 @@ data class AnalyticsUiState(
     val isLoading: Boolean = false,
     val topViewed: List<RestaurantAnalytics> = emptyList(),
     val topInteracted: List<RestaurantAnalytics> = emptyList(),
+    val categoryTimeSlotStats: List<CategoryTimeSlotStat> = emptyList(),
     val error: String? = null
 )
 
@@ -36,13 +38,17 @@ class AnalyticsViewModel @Inject constructor(
 
             val viewedResult = analyticsRepository.getTopViewedRestaurants(limit = 8)
             val interactedResult = analyticsRepository.getTopInteractedRestaurants(limit = 8)
+            val categoryStatsResult = analyticsRepository.getCategoryTimeSlotStats()
 
-            val error = viewedResult.exceptionOrNull() ?: interactedResult.exceptionOrNull()
+            val error = viewedResult.exceptionOrNull()
+                ?: interactedResult.exceptionOrNull()
+                ?: categoryStatsResult.exceptionOrNull()
 
             _uiState.value = AnalyticsUiState(
                 isLoading = false,
                 topViewed = viewedResult.getOrNull().orEmpty(),
                 topInteracted = interactedResult.getOrNull().orEmpty(),
+                categoryTimeSlotStats = categoryStatsResult.getOrNull().orEmpty(),
                 error = error?.message
             )
         }

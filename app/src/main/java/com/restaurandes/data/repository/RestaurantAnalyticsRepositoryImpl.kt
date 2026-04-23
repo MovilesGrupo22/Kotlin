@@ -3,6 +3,7 @@ package com.restaurandes.data.repository
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.restaurandes.domain.model.CategoryTimeSlotStat
 import com.restaurandes.domain.model.RestaurantAnalytics
 import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
 import kotlinx.coroutines.tasks.await
@@ -14,6 +15,7 @@ class RestaurantAnalyticsRepositoryImpl @Inject constructor(
 
     companion object {
         private const val COLLECTION = "restaurant_analytics"
+        private const val COLLECTION_CATEGORY_STATS = "category_time_stats"
     }
 
     override suspend fun trackView(restaurantId: String, restaurantName: String) {
@@ -42,6 +44,40 @@ class RestaurantAnalyticsRepositoryImpl @Inject constructor(
                     SetOptions.merge()
                 ).await()
         } catch (_: Exception) {}
+    }
+
+    override suspend fun trackCategoryExplored(category: String, timeSlot: String) {
+        if (category.isBlank() || timeSlot.isBlank()) return
+        try {
+            val docId = "${category.lowercase().replace(" ", "_")}_$timeSlot"
+            firestore.collection(COLLECTION_CATEGORY_STATS).document(docId)
+                .set(
+                    mapOf(
+                        "category" to category,
+                        "timeSlot" to timeSlot,
+                        "count" to FieldValue.increment(1)
+                    ),
+                    SetOptions.merge()
+                ).await()
+        } catch (_: Exception) {}
+    }
+
+    override suspend fun getCategoryTimeSlotStats(): Result<List<CategoryTimeSlotStat>> {
+        return try {
+            val snapshot = firestore.collection(COLLECTION_CATEGORY_STATS).get().await()
+            val result = snapshot.documents.mapNotNull { doc ->
+                try {
+                    CategoryTimeSlotStat(
+                        category = doc.getString("category") ?: return@mapNotNull null,
+                        timeSlot = doc.getString("timeSlot") ?: return@mapNotNull null,
+                        count = doc.getLong("count") ?: 0
+                    )
+                } catch (_: Exception) { null }
+            }
+            Result.success(result)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     override suspend fun getTopViewedRestaurants(limit: Int): Result<List<RestaurantAnalytics>> {

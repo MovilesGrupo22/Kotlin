@@ -16,9 +16,22 @@ class RestaurantRepositoryImpl @Inject constructor(
 
     private companion object {
         const val COLLECTION_RESTAURANTS = "restaurants"
+        const val CACHE_TTL_MS = 5 * 60 * 1000L
     }
 
+    private var cachedRestaurants: List<Restaurant> = emptyList()
+    private var cacheTimestamp: Long = 0L
+
+    private fun isCacheValid() =
+        cachedRestaurants.isNotEmpty() &&
+        System.currentTimeMillis() - cacheTimestamp < CACHE_TTL_MS
+
     override suspend fun getRestaurants(): Result<List<Restaurant>> {
+        if (isCacheValid()) {
+            android.util.Log.d("RestaurantRepo", "Returning cached restaurants (${cachedRestaurants.size})")
+            return Result.success(cachedRestaurants)
+        }
+
         return try {
             android.util.Log.d("RestaurantRepo", "Fetching restaurants from Firestore...")
             val snapshot = firestore.collection(COLLECTION_RESTAURANTS)
@@ -58,6 +71,8 @@ class RestaurantRepositoryImpl @Inject constructor(
             }
             
             android.util.Log.d("RestaurantRepo", "Successfully loaded ${restaurants.size} restaurants")
+            cachedRestaurants = restaurants
+            cacheTimestamp = System.currentTimeMillis()
             Result.success(restaurants)
         } catch (e: Exception) {
             android.util.Log.e("RestaurantRepo", "Error fetching restaurants", e)
