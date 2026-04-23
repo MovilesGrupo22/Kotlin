@@ -21,13 +21,13 @@ class RestaurantRepositoryImpl @Inject constructor(
         const val CACHE_TTL_MS = 5 * 60 * 1000L
     }
 
+    private var lastKnownRestaurants: List<Restaurant> = emptyList()
     private var cachedRestaurants: List<Restaurant> = emptyList()
     private var cacheTimestamp: Long = 0L
 
     private fun isCacheValid() =
         cachedRestaurants.isNotEmpty() &&
         System.currentTimeMillis() - cacheTimestamp < CACHE_TTL_MS
-    private var lastKnownRestaurants: List<Restaurant> = emptyList()
 
     override suspend fun getRestaurants(): Result<List<Restaurant>> {
         if (isCacheValid()) {
