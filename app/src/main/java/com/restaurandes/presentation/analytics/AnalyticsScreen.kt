@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.restaurandes.domain.model.CategoryTimeSlotStat
 import com.restaurandes.domain.model.RestaurantAnalytics
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,6 +117,10 @@ fun AnalyticsScreen(
                         )
                     }
 
+                    item {
+                        CategoryTimeSlotCard(stats = uiState.categoryTimeSlotStats)
+                    }
+
                     item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
@@ -172,6 +177,102 @@ private fun AnalyticsSectionCard(
                 )
                 if (index < items.lastIndex) {
                     Spacer(modifier = Modifier.height(10.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryTimeSlotCard(stats: List<CategoryTimeSlotStat>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "BQ3 — Categorias por franja horaria",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Qué tipos de comida se exploran más en cada momento del día",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (stats.isEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Sin datos aún. Explora restaurantes para generar estadísticas.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                return@Column
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val timeSlotOrder = listOf("breakfast", "lunch", "snack", "dinner", "night")
+            val timeSlotLabel = mapOf(
+                "breakfast" to "Desayuno (6-10h)",
+                "lunch" to "Almuerzo (11-14h)",
+                "snack" to "Merienda (15-17h)",
+                "dinner" to "Cena (18-22h)",
+                "night" to "Noche (23-5h)"
+            )
+
+            val byTimeSlot = stats.groupBy { it.timeSlot }
+
+            timeSlotOrder.forEach { slot ->
+                val slotStats = byTimeSlot[slot] ?: return@forEach
+                val sorted = slotStats.sortedByDescending { it.count }
+                val maxCount = sorted.maxOfOrNull { it.count }.takeIf { it != null && it > 0 } ?: 1L
+
+                Text(
+                    text = timeSlotLabel[slot] ?: slot,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
+                )
+
+                sorted.forEachIndexed { index, stat ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(bottom = if (index < sorted.lastIndex) 6.dp else 0.dp)
+                    ) {
+                        Text(
+                            text = stat.category,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.width(80.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(fraction = (stat.count.toFloat() / maxCount.toFloat()).coerceIn(0f, 1f))
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(MaterialTheme.colorScheme.tertiary)
+                            )
+                        }
+                        Text(
+                            text = "${stat.count}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(28.dp)
+                        )
+                    }
                 }
             }
         }
