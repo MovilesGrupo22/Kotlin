@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -397,6 +399,15 @@ private fun ComparisonSummaryContent(
         }
 
         item {
+            val verdict = computeSmartVerdict(primary, secondary)
+            SmartVerdictCard(
+                primaryName = p.name,
+                secondaryName = s.name,
+                verdict = verdict
+            )
+        }
+
+        item {
             ComparisonRow(
                 label = "Category",
                 primaryValue = p.category,
@@ -455,6 +466,236 @@ private fun ComparisonSummaryContent(
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+data class SmartVerdict(
+    val primaryScore: Int,
+    val secondaryScore: Int,
+    val primaryWins: Boolean,
+    val description: String,
+    val winnerName: String,
+    val reasons: List<Pair<String, String>>
+)
+
+private fun priceScore(priceRange: String): Double {
+    return when (priceRange.count { it == '$' }) {
+        1 -> 25.0
+        2 -> 17.0
+        3 -> 8.0
+        else -> 12.0
+    }
+}
+
+private fun computeSmartVerdict(
+    primary: ComparableRestaurant,
+    secondary: ComparableRestaurant
+): SmartVerdict {
+    val p = primary.restaurant
+    val s = secondary.restaurant
+
+    fun score(r: com.restaurandes.domain.model.Restaurant, distKm: Double): Int {
+        val rating = (r.rating / 5.0) * 40
+        val price = priceScore(r.priceRange)
+        val reviews = minOf(15.0, r.reviewCount * 1.5)
+        val open = if (r.isCurrentlyOpen()) 10.0 else 0.0
+        val distance = maxOf(0.0, 10.0 - distKm * 2.0)
+        return (rating + price + reviews + open + distance).toInt().coerceIn(0, 100)
+    }
+
+    val pScore = score(p, primary.distanceKm)
+    val sScore = score(s, secondary.distanceKm)
+    val primaryWins = pScore >= sScore
+    val winner = if (primaryWins) p else s
+    val winnerScore = if (primaryWins) pScore else sScore
+    val loserScore = if (primaryWins) sScore else pScore
+    val diff = winnerScore - loserScore
+
+    val reasons = mutableListOf<Pair<String, String>>()
+
+    if (kotlin.math.abs(p.rating - s.rating) > 0.09) {
+        val betterRated = if (p.rating > s.rating) p else s
+        if (betterRated.name == winner.name) {
+            reasons += "⭐" to "Better rated  ${String.format("%.1f", betterRated.rating)} vs ${String.format("%.1f", if (betterRated == p) s.rating else p.rating)}"
+        }
+    }
+
+    if (p.priceRange != s.priceRange) {
+        val cheaperWins = priceScore(p.priceRange) > priceScore(s.priceRange)
+        val betterValue = if (cheaperWins) p else s
+        if (betterValue.name == winner.name) {
+            reasons += "💰" to "Better value  (${betterValue.priceRange} vs ${if (betterValue == p) s.priceRange else p.priceRange})"
+        }
+    }
+
+    if (kotlin.math.abs(primary.distanceKm - secondary.distanceKm) > 0.1) {
+        val closer = if (primary.distanceKm < secondary.distanceKm) primary else secondary
+        if (closer.restaurant.name == winner.name) {
+            reasons += "📍" to "Closer  (${String.format("%.1f", closer.distanceKm)} km vs ${String.format("%.1f", if (closer == primary) secondary.distanceKm else primary.distanceKm)} km)"
+        }
+    }
+
+    if (p.reviewCount != s.reviewCount) {
+        val moreReviewed = if (p.reviewCount > s.reviewCount) p else s
+        if (moreReviewed.name == winner.name) {
+            reasons += "📝" to "More reviews  (${moreReviewed.reviewCount} vs ${if (moreReviewed == p) s.reviewCount else p.reviewCount})"
+        }
+    }
+
+    if (p.isCurrentlyOpen() != s.isCurrentlyOpen() && winner.isCurrentlyOpen()) {
+        reasons += "🕐" to "Currently open"
+    }
+
+    val topReason = reasons.firstOrNull()?.second?.substringBefore("  ") ?: "overall score"
+    val description = when {
+        diff <= 4 -> "${winner.name} edges ahead by a thin margin. Both restaurants are solid choices, but ${winner.name} has a slight advantage in $topReason."
+        diff <= 14 -> "${winner.name} has a clear advantage. It stands out mainly for $topReason."
+        else -> "${winner.name} is the clear winner here, particularly due to $topReason."
+    }
+
+    return SmartVerdict(
+        primaryScore = pScore,
+        secondaryScore = sScore,
+        primaryWins = primaryWins,
+        description = description,
+        winnerName = winner.name,
+        reasons = reasons
+    )
+}
+
+@Composable
+private fun SmartVerdictCard(
+    primaryName: String,
+    secondaryName: String,
+    verdict: SmartVerdict
+) {
+    val primary = MaterialTheme.colorScheme.primary
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(text = "✦", color = primary, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Smart Verdict",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = primary
+                )
+            }
+
+            ScoreBar(
+                name = primaryName,
+                score = verdict.primaryScore,
+                isWinner = verdict.primaryWins,
+                barColor = if (verdict.primaryWins) primary else MaterialTheme.colorScheme.outline
+            )
+
+            ScoreBar(
+                name = secondaryName,
+                score = verdict.secondaryScore,
+                isWinner = !verdict.primaryWins,
+                barColor = if (!verdict.primaryWins) primary else MaterialTheme.colorScheme.outline
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Text(
+                    text = verdict.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+
+            if (verdict.reasons.isNotEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = verdict.winnerName,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = primary
+                        )
+                        verdict.reasons.forEach { (emoji, text) ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(text = emoji, style = MaterialTheme.typography.bodySmall)
+                                Text(text = text, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScoreBar(
+    name: String,
+    score: Int,
+    isWinner: Boolean,
+    barColor: androidx.compose.ui.graphics.Color
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = if (isWinner) FontWeight.Bold else FontWeight.Normal,
+                color = if (isWinner) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (isWinner) {
+                Text(
+                    text = "🏆 $score/100",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Text(
+                    text = "$score/100",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.surface)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(score / 100f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(barColor)
+            )
+        }
     }
 }
 

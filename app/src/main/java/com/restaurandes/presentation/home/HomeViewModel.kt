@@ -3,6 +3,7 @@ package com.restaurandes.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
+import com.restaurandes.data.local.LocalUserPreferences
 import com.restaurandes.domain.model.Restaurant
 import com.restaurandes.domain.usecase.GetNearbyRestaurantsUseCase
 import com.restaurandes.domain.usecase.GetRestaurantsUseCase
@@ -19,7 +20,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val getRestaurantsUseCase: GetRestaurantsUseCase,
     private val getNearbyRestaurantsUseCase: GetNearbyRestaurantsUseCase,
-    private val analyticsService: AnalyticsService
+    private val analyticsService: AnalyticsService,
+    private val localUserPreferences: LocalUserPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -37,7 +39,14 @@ class HomeViewModel @Inject constructor(
             getRestaurantsUseCase().fold(
                 onSuccess = { restaurants ->
                     val categories = restaurants.map { it.category }.distinct().sorted()
-                    val selectedCategory = getInitialContextCategory(_uiState.value.selectedCategory)
+                    val persistedCategory = localUserPreferences.getLastHomeFilter()
+                    val currentCategory = _uiState.value.selectedCategory
+                    val restoredCategory = getRestoredCategory(
+                        currentCategory = currentCategory,
+                        persistedCategory = persistedCategory,
+                        availableCategories = categories
+                    )
+                    val selectedCategory = getInitialContextCategory(restoredCategory)
                     val filteredRestaurants = applyFilter(restaurants, selectedCategory)
                     val trendingCampusInsight = buildTrendingCampusInsight(restaurants)
 
@@ -103,6 +112,7 @@ class HomeViewModel @Inject constructor(
     fun filterByCategory(category: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(selectedCategory = category) }
+            localUserPreferences.saveLastHomeFilter(category)
             analyticsService.logFilterUsed(category, null)
             analyticsService.logSectionInteraction(
                 AnalyticsService.AppSection.HOME,
@@ -134,6 +144,16 @@ class HomeViewModel @Inject constructor(
             "Nearby" -> restaurants
             else -> restaurants.filter { it.category == category }
         }
+    }
+
+    private fun getRestoredCategory(
+        currentCategory: String,
+        persistedCategory: String,
+        availableCategories: List<String>
+    ): String {
+        val validFilters = setOf("All", "Open", "TopRated", "Nearby") + availableCategories
+        val preferredCategory = if (currentCategory != "All") currentCategory else persistedCategory
+        return if (preferredCategory in validFilters) preferredCategory else "All"
     }
 
     private fun buildContextCanvas(

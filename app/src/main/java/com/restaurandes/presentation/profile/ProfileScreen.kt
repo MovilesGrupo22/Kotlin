@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun ProfileScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToAnalytics: () -> Unit,
     onLogout: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
@@ -223,6 +224,15 @@ fun ProfileScreen(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedButton(
+                        onClick = onNavigateToAnalytics,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Ver Analytics")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Button(
                         onClick = {

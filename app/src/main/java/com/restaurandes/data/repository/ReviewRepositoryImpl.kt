@@ -1,6 +1,8 @@
 package com.restaurandes.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.firestore.Source
 import com.restaurandes.domain.model.Review
 import com.restaurandes.domain.repository.ReviewRepository
 import kotlinx.coroutines.tasks.await
@@ -17,6 +19,9 @@ class ReviewRepositoryImpl @Inject constructor(
         const val COLLECTION_RESTAURANTS = "restaurants"
     }
 
+    private var lastKnownReviewsByRestaurant: Map<String, List<Review>> = emptyMap()
+    private var lastKnownReviewsByUser: Map<String, List<Review>> = emptyMap()
+
     override suspend fun getReviewsByRestaurant(restaurantId: String): Result<List<Review>> {
         return try {
             val snapshot = firestore.collection(COLLECTION_REVIEWS)
@@ -24,26 +29,12 @@ class ReviewRepositoryImpl @Inject constructor(
                 .get()
                 .await()
 
-            val reviews = snapshot.documents.mapNotNull { doc ->
-                try {
-                    Review(
-                        id = doc.id,
-                        restaurantId = doc.getString("restaurantId") ?: return@mapNotNull null,
-                        userId = doc.getString("userId") ?: "",
-                        userName = doc.getString("userName") ?: "Usuario",
-                        rating = doc.getDouble("rating") ?: 0.0,
-                        comment = doc.getString("comment") ?: "",
-                        timestamp = doc.getLong("timestamp") ?: 0L,
-                        imageUrls = (doc.get("imageUrls") as? List<*>)?.filterIsInstance<String>().orEmpty()
-                    )
-                } catch (_: Exception) {
-                    null
-                }
-            }.sortedByDescending { it.timestamp }
+            val reviews = snapshot.toReviews()
+            lastKnownReviewsByRestaurant = lastKnownReviewsByRestaurant + (restaurantId to reviews)
 
             Result.success(reviews)
         } catch (e: Exception) {
-            Result.failure(e)
+            getReviewsByRestaurantFromCache(restaurantId, e)
         }
     }
 
@@ -54,26 +45,12 @@ class ReviewRepositoryImpl @Inject constructor(
                 .get()
                 .await()
 
-            val reviews = snapshot.documents.mapNotNull { doc ->
-                try {
-                    Review(
-                        id = doc.id,
-                        restaurantId = doc.getString("restaurantId") ?: "",
-                        userId = doc.getString("userId") ?: "",
-                        userName = doc.getString("userName") ?: "Usuario",
-                        rating = doc.getDouble("rating") ?: 0.0,
-                        comment = doc.getString("comment") ?: "",
-                        timestamp = doc.getLong("timestamp") ?: 0L,
-                        imageUrls = (doc.get("imageUrls") as? List<*>)?.filterIsInstance<String>().orEmpty()
-                    )
-                } catch (_: Exception) {
-                    null
-                }
-            }.sortedByDescending { it.timestamp }
+            val reviews = snapshot.toReviews()
+            lastKnownReviewsByUser = lastKnownReviewsByUser + (userId to reviews)
 
             Result.success(reviews)
         } catch (e: Exception) {
-            Result.failure(e)
+            getReviewsByUserFromCache(userId, e)
         }
     }
 
@@ -173,7 +150,64 @@ class ReviewRepositoryImpl @Inject constructor(
 
             Result.success(snapshot.size())
         } catch (e: Exception) {
-            Result.failure(e)
+            getReviewsByUserFromCache(userId, e).map { it.size }
         }
+    }
+
+    private suspend fun getReviewsByRestaurantFromCache(
+        restaurantId: String,
+        originalError: Exception
+    ): Result<List<Review>> {
+        return try {
+            val snapshot = firestore.collection(COLLECTION_REVIEWS)
+                .whereEqualTo("restaurantId", restaurantId)
+                .get(Source.CACHE)
+                .await()
+
+            val reviews = snapshot.toReviews()
+            lastKnownReviewsByRestaurant = lastKnownReviewsByRestaurant + (restaurantId to reviews)
+            Result.success(reviews)
+        } catch (cacheError: Exception) {
+            lastKnownReviewsByRestaurant[restaurantId]?.let { Result.success(it) }
+                ?: Result.failure(Exception("Reviews not available offline", originalError))
+        }
+    }
+
+    private suspend fun getReviewsByUserFromCache(
+        userId: String,
+        originalError: Exception
+    ): Result<List<Review>> {
+        return try {
+            val snapshot = firestore.collection(COLLECTION_REVIEWS)
+                .whereEqualTo("userId", userId)
+                .get(Source.CACHE)
+                .await()
+
+            val reviews = snapshot.toReviews()
+            lastKnownReviewsByUser = lastKnownReviewsByUser + (userId to reviews)
+            Result.success(reviews)
+        } catch (cacheError: Exception) {
+            lastKnownReviewsByUser[userId]?.let { Result.success(it) }
+                ?: Result.failure(Exception("User reviews not available offline", originalError))
+        }
+    }
+
+    private fun QuerySnapshot.toReviews(): List<Review> {
+        return documents.mapNotNull { doc ->
+            try {
+                Review(
+                    id = doc.id,
+                    restaurantId = doc.getString("restaurantId") ?: return@mapNotNull null,
+                    userId = doc.getString("userId") ?: "",
+                    userName = doc.getString("userName") ?: "Usuario",
+                    rating = doc.getDouble("rating") ?: 0.0,
+                    comment = doc.getString("comment") ?: "",
+                    timestamp = doc.getLong("timestamp") ?: 0L,
+                    imageUrls = (doc.get("imageUrls") as? List<*>)?.filterIsInstance<String>().orEmpty()
+                )
+            } catch (_: Exception) {
+                null
+            }
+        }.sortedByDescending { it.timestamp }
     }
 }
