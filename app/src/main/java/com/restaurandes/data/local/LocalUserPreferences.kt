@@ -1,6 +1,7 @@
 package com.restaurandes.data.local
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -26,6 +27,9 @@ class LocalUserPreferences @Inject constructor(
         val LAST_HOME_FILTER = stringPreferencesKey("last_home_filter")
     }
 
+    private fun biometricEnabledKey(userId: String) =
+        booleanPreferencesKey("biometric_enabled_$userId")
+
     val lastHomeFilter: Flow<String> = context.restaurandesDataStore.data
         .catch { exception ->
             if (exception is IOException) {
@@ -45,6 +49,27 @@ class LocalUserPreferences @Inject constructor(
     suspend fun saveLastHomeFilter(filter: String) {
         context.restaurandesDataStore.edit { preferences ->
             preferences[LAST_HOME_FILTER] = filter
+        }
+    }
+
+    suspend fun isBiometricEnabled(userId: String): Boolean {
+        return context.restaurandesDataStore.data
+            .catch { exception ->
+                if (exception is IOException) {
+                    emit(emptyPreferences())
+                } else {
+                    throw exception
+                }
+            }
+            .map { preferences ->
+                preferences[biometricEnabledKey(userId)] ?: false
+            }
+            .first()
+    }
+
+    suspend fun saveBiometricEnabled(userId: String, enabled: Boolean) {
+        context.restaurandesDataStore.edit { preferences ->
+            preferences[biometricEnabledKey(userId)] = enabled
         }
     }
 }
