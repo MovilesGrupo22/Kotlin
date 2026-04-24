@@ -55,6 +55,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -110,6 +111,13 @@ fun MapScreen(
     }
 
     // Ajusta la cámara a los restaurantes; si no hay, centra en Uniandes
+    LaunchedEffect(locationMessage) {
+        if (locationMessage != null) {
+            delay(10_000)
+            locationMessage = null
+        }
+    }
+
     LaunchedEffect(uiState.restaurants, isLocatingUser) {
         if (hasAdjustedCamera || isLocatingUser) return@LaunchedEffect
 
