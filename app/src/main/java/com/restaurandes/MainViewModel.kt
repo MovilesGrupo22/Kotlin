@@ -34,7 +34,10 @@ class MainViewModel @Inject constructor(
 
     private val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
         viewModelScope.launch {
-            updateSessionState(firebaseAuth.currentUser?.uid)
+            updateSessionState(
+                currentUserId = firebaseAuth.currentUser?.uid,
+                linkedAccount = localUserPreferences.getLinkedBiometricAccount()
+            )
         }
     }
 
@@ -52,7 +55,7 @@ class MainViewModel @Inject constructor(
 
     private suspend fun updateSessionState(
         currentUserId: String?,
-        linkedAccount: LinkedBiometricAccount? = localUserPreferences.getLinkedBiometricAccount()
+        linkedAccount: LinkedBiometricAccount?
     ) {
         val canUnlockLinkedAccount = currentUserId != null &&
             linkedAccount?.userId == currentUserId
@@ -74,7 +77,10 @@ class MainViewModel @Inject constructor(
     fun clearLinkedBiometricAccount() {
         viewModelScope.launch {
             localUserPreferences.clearLinkedBiometricAccount()
-            updateSessionState(auth.currentUser?.uid)
+            updateSessionState(
+                currentUserId = auth.currentUser?.uid,
+                linkedAccount = null
+            )
         }
     }
 
