@@ -27,10 +27,7 @@ fun NavigationGraph(
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route,
     showBiometricQuickAccess: Boolean = false,
-    biometricQuickAccessName: String? = null,
-    biometricQuickAccessEmail: String? = null,
-    onBiometricQuickAccess: BiometricQuickAccessHandler? = null,
-    onForgetBiometricQuickAccess: (() -> Unit)? = null
+    onBiometricQuickAccess: BiometricQuickAccessHandler? = null
 ) {
     NavHost(
         navController = navController,
@@ -48,8 +45,6 @@ fun NavigationGraph(
                     }
                 },
                 showBiometricQuickAccess = showBiometricQuickAccess,
-                biometricQuickAccessName = biometricQuickAccessName,
-                biometricQuickAccessEmail = biometricQuickAccessEmail,
                 onBiometricQuickAccess = {
                     val goHome = {
                         navController.navigate(Screen.Home.route) {
@@ -57,8 +52,7 @@ fun NavigationGraph(
                         }
                     }
                     onBiometricQuickAccess?.invoke(goHome)
-                },
-                onForgetBiometricQuickAccess = onForgetBiometricQuickAccess
+                }
             )
         }
 

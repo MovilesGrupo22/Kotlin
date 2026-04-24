@@ -3,8 +3,6 @@ package com.restaurandes.presentation.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
-import com.restaurandes.data.local.LocalUserPreferences
-import com.restaurandes.domain.model.User
 import com.restaurandes.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,14 +20,13 @@ data class LoginUiState(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val analyticsService: AnalyticsService,
-    private val localUserPreferences: LocalUserPreferences
+    private val analyticsService: AnalyticsService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    fun login(email: String, password: String, linkBiometricAccess: Boolean) {
+    fun login(email: String, password: String) {
         val cleanEmail = email.trim().lowercase()
         val cleanPassword = password.trim()
 
@@ -51,8 +48,7 @@ class LoginViewModel @Inject constructor(
             try {
                 val result = userRepository.signIn(cleanEmail, cleanPassword)
                 result.fold(
-                    onSuccess = { user ->
-                        persistBiometricLinkIfNeeded(user, linkBiometricAccess)
+                    onSuccess = {
                         _uiState.value = LoginUiState(isSuccess = true)
                     },
                     onFailure = { error ->
@@ -82,14 +78,13 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun signInWithGoogle(idToken: String, linkBiometricAccess: Boolean) {
+    fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val result = userRepository.signInWithGoogle(idToken)
                 result.fold(
-                    onSuccess = { user ->
-                        persistBiometricLinkIfNeeded(user, linkBiometricAccess)
+                    onSuccess = {
                         _uiState.value = LoginUiState(isSuccess = true)
                     },
                     onFailure = { error ->
@@ -114,19 +109,6 @@ class LoginViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
-    }
-
-    private suspend fun persistBiometricLinkIfNeeded(
-        user: User,
-        linkBiometricAccess: Boolean
-    ) {
-        if (!linkBiometricAccess) return
-
-        localUserPreferences.saveLinkedBiometricAccount(
-            userId = user.id,
-            name = user.name,
-            email = user.email
-        )
     }
 
     private fun isValidEmail(email: String): Boolean {

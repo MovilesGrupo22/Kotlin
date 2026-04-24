@@ -50,8 +50,6 @@ class MainActivity : FragmentActivity() {
                         NavigationGraph(
                             navController = navController,
                             startDestination = uiState.startDestination ?: Screen.Login.route,
-                            biometricQuickAccessName = uiState.linkedBiometricAccount?.name,
-                            biometricQuickAccessEmail = uiState.linkedBiometricAccount?.email,
                             showBiometricQuickAccess = uiState.shouldShowBiometricQuickAccess,
                             onBiometricQuickAccess = { onSuccess ->
                                 if (!uiState.canUnlockLinkedAccount) {
@@ -81,9 +79,6 @@ class MainActivity : FragmentActivity() {
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
-                            },
-                            onForgetBiometricQuickAccess = {
-                                mainViewModel.clearLinkedBiometricAccount()
                             }
                         )
                     }

@@ -4,7 +4,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +16,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -53,17 +51,13 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
     showBiometricQuickAccess: Boolean = false,
-    biometricQuickAccessName: String? = null,
-    biometricQuickAccessEmail: String? = null,
     onBiometricQuickAccess: (() -> Unit)? = null,
-    onForgetBiometricQuickAccess: (() -> Unit)? = null,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var linkBiometricAccess by remember { mutableStateOf(false) }
 
     val uiState by viewModel.uiState.collectAsState()
 
@@ -83,7 +77,7 @@ fun LoginScreen(
             val account = task.getResult(ApiException::class.java)
             val idToken = account.idToken
             if (idToken != null) {
-                viewModel.signInWithGoogle(idToken, linkBiometricAccess)
+                viewModel.signInWithGoogle(idToken)
             } else {
                 viewModel.setError(
                     "Google no devolvio un token. Verifica que el SHA-1 del proyecto este registrado en Firebase Console."
@@ -176,24 +170,8 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = linkBiometricAccess,
-                onCheckedChange = { linkBiometricAccess = it }
-            )
-            Text(
-                text = "Vincular esta cuenta al acceso biometrico de este dispositivo",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
         Button(
-            onClick = { viewModel.login(email, password, linkBiometricAccess) },
+            onClick = { viewModel.login(email, password) },
             modifier = Modifier.fillMaxWidth(),
             enabled = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
         ) {
@@ -230,16 +208,7 @@ fun LoginScreen(
         if (showBiometricQuickAccess && onBiometricQuickAccess != null) {
             Spacer(modifier = Modifier.height(18.dp))
 
-            if (!biometricQuickAccessName.isNullOrBlank() || !biometricQuickAccessEmail.isNullOrBlank()) {
-                Text(
-                    text = biometricQuickAccessName ?: biometricQuickAccessEmail ?: "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            OutlinedButton(
+            TextButton(
                 onClick = onBiometricQuickAccess,
                 enabled = !uiState.isLoading
             ) {
@@ -248,13 +217,7 @@ fun LoginScreen(
                     contentDescription = null
                 )
                 Spacer(modifier = Modifier.size(8.dp))
-                Text("Entrar con biometria")
-            }
-
-            if (onForgetBiometricQuickAccess != null) {
-                TextButton(onClick = onForgetBiometricQuickAccess) {
-                    Text("Olvidar acceso biometrico")
-                }
+                Text("Acceder con huella")
             }
         }
 

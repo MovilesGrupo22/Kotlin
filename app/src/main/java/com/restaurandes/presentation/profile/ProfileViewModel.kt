@@ -22,7 +22,8 @@ data class ProfileUiState(
     val isLoading: Boolean = false,
     val reviewsCount: Int = 0,
     val favoritesCount: Int = 0,
-    val reviews: List<Review> = emptyList()
+    val reviews: List<Review> = emptyList(),
+    val isBiometricEnabled: Boolean = false
 )
 
 @HiltViewModel
@@ -58,16 +59,42 @@ class ProfileViewModel @Inject constructor(
                 val reviewsDeferred = async {
                     reviewRepository.getReviewsByUser(user.id).getOrDefault(emptyList())
                 }
+                val linkedBiometricAccountDeferred = async {
+                    localUserPreferences.getLinkedBiometricAccount()
+                }
                 val resolvedUser = resolvedUserDeferred.await() ?: user
+                val linkedBiometricAccount = linkedBiometricAccountDeferred.await()
 
                 _uiState.value = _uiState.value.copy(
                     user = resolvedUser,
                     isLoading = false,
                     reviewsCount = reviewsCountDeferred.await(),
                     favoritesCount = resolvedUser.favoriteRestaurants.size,
-                    reviews = reviewsDeferred.await()
+                    reviews = reviewsDeferred.await(),
+                    isBiometricEnabled = linkedBiometricAccount?.userId == resolvedUser.id
                 )
             }
+        }
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val currentUser = _uiState.value.user ?: return@launch
+
+            if (enabled) {
+                localUserPreferences.saveLinkedBiometricAccount(
+                    userId = currentUser.id,
+                    name = currentUser.name,
+                    email = currentUser.email
+                )
+            } else {
+                val linkedBiometricAccount = localUserPreferences.getLinkedBiometricAccount()
+                if (linkedBiometricAccount?.userId == currentUser.id) {
+                    localUserPreferences.clearLinkedBiometricAccount()
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(isBiometricEnabled = enabled)
         }
     }
 
