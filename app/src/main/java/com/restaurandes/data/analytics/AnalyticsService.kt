@@ -125,6 +125,51 @@ class AnalyticsService @Inject constructor() {
         analytics.logEvent("compare_used", bundle)
     }
 
+    fun logCompareOpened(
+        primaryRestaurantId: String,
+        secondaryRestaurantId: String?,
+        userId: String?
+    ) {
+        val bundle = Bundle().apply {
+            putString("primary_restaurant_id", primaryRestaurantId)
+            putString("secondary_restaurant_id", secondaryRestaurantId)
+            putString("entry_mode", if (secondaryRestaurantId.isNullOrBlank()) "manual" else "preselected")
+            userId?.let { putString("user_id", it) }
+            putLong("timestamp", System.currentTimeMillis())
+        }
+        analytics.logEvent("compare_opened", bundle)
+    }
+
+    fun logRestaurantSelectedAfterCompare(
+        selectedRestaurantId: String,
+        comparedRestaurantId: String,
+        userId: String?
+    ) {
+        val bundle = Bundle().apply {
+            putString("selected_restaurant_id", selectedRestaurantId)
+            putString("compared_restaurant_id", comparedRestaurantId)
+            userId?.let { putString("user_id", it) }
+            putLong("timestamp", System.currentTimeMillis())
+        }
+        analytics.logEvent("restaurant_selected_after_compare", bundle)
+    }
+
+    fun logPostCompareNavigation(
+        selectedRestaurantId: String,
+        comparedRestaurantId: String,
+        destination: String,
+        userId: String?
+    ) {
+        val bundle = Bundle().apply {
+            putString("selected_restaurant_id", selectedRestaurantId)
+            putString("compared_restaurant_id", comparedRestaurantId)
+            putString("destination", destination)
+            userId?.let { putString("user_id", it) }
+            putLong("timestamp", System.currentTimeMillis())
+        }
+        analytics.logEvent("compare_navigation", bundle)
+    }
+
     fun logFilterUsed(filterType: String, userId: String?) {
         val bundle = Bundle().apply {
             putString("filter_type", filterType)

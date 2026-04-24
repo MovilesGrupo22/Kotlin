@@ -5,11 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
 import com.restaurandes.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class LoginUiState(
     val isLoading: Boolean = false,
@@ -27,42 +27,41 @@ class LoginViewModel @Inject constructor(
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun login(email: String, password: String) {
-        // Limpiar espacios en blanco
         val cleanEmail = email.trim().lowercase()
         val cleanPassword = password.trim()
-        
+
         if (cleanEmail.isBlank() || cleanPassword.isBlank()) {
-            _uiState.value = _uiState.value.copy(error = "Email y contraseña son requeridos")
+            _uiState.value = _uiState.value.copy(error = "Email y contrasena son requeridos")
             return
         }
 
-        // Validar formato de email
         if (!isValidEmail(cleanEmail)) {
-            _uiState.value = _uiState.value.copy(error = "El email debe tener formato válido (ejemplo: usuario@correo.com)")
+            _uiState.value = _uiState.value.copy(
+                error = "El email debe tener formato valido (ejemplo: usuario@correo.com)"
+            )
             return
         }
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
+
             try {
                 val result = userRepository.signIn(cleanEmail, cleanPassword)
                 result.fold(
-                    onSuccess = { user ->
-                        // Analytics handled by repository
+                    onSuccess = {
                         _uiState.value = LoginUiState(isSuccess = true)
                     },
                     onFailure = { error ->
                         val errorMessage = when {
-                            error.message?.contains("password is invalid", ignoreCase = true) == true -> 
-                                "Contraseña incorrecta"
-                            error.message?.contains("no user record", ignoreCase = true) == true -> 
+                            error.message?.contains("password is invalid", ignoreCase = true) == true ->
+                                "Contrasena incorrecta"
+                            error.message?.contains("no user record", ignoreCase = true) == true ->
                                 "No existe una cuenta con este email"
-                            error.message?.contains("badly formatted", ignoreCase = true) == true -> 
-                                "Email inválido"
-                            error.message?.contains("network", ignoreCase = true) == true -> 
-                                "Error de conexión. Verifica tu internet."
-                            else -> error.message ?: "Error al iniciar sesión"
+                            error.message?.contains("badly formatted", ignoreCase = true) == true ->
+                                "Email invalido"
+                            error.message?.contains("network", ignoreCase = true) == true ->
+                                "Error de conexion. Verifica tu internet."
+                            else -> error.message ?: "Error al iniciar sesion"
                         }
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -85,11 +84,13 @@ class LoginViewModel @Inject constructor(
             try {
                 val result = userRepository.signInWithGoogle(idToken)
                 result.fold(
-                    onSuccess = { _uiState.value = LoginUiState(isSuccess = true) },
+                    onSuccess = {
+                        _uiState.value = LoginUiState(isSuccess = true)
+                    },
                     onFailure = { error ->
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
-                            error = error.message ?: "Error al iniciar sesión con Google"
+                            error = error.message ?: "Error al iniciar sesion con Google"
                         )
                     }
                 )

@@ -3,30 +3,35 @@ package com.restaurandes.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
+import com.restaurandes.data.local.LocalUserPreferences
 import com.restaurandes.domain.model.Review
 import com.restaurandes.domain.model.User
 import com.restaurandes.domain.repository.ReviewRepository
 import com.restaurandes.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ProfileUiState(
     val user: User? = null,
     val isLoading: Boolean = false,
     val reviewsCount: Int = 0,
     val favoritesCount: Int = 0,
-    val reviews: List<Review> = emptyList()
+    val reviews: List<Review> = emptyList(),
+    val isBiometricEnabled: Boolean = false
 )
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val reviewRepository: ReviewRepository,
-    private val analyticsService: AnalyticsService
+    private val analyticsService: AnalyticsService,
+    private val localUserPreferences: LocalUserPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -41,34 +46,71 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            userRepository.observeCurrentUser().collect { user ->
-                val reviewsCount = user?.let {
-                    reviewRepository.getReviewsCountByUser(it.id).getOrDefault(0)
-                } ?: 0
+            userRepository.observeCurrentUser().collectLatest { user ->
+                if (user == null) {
+                    _uiState.value = ProfileUiState(isLoading = false)
+                    return@collectLatest
+                }
 
-                val reviews = user?.let {
-                    reviewRepository.getReviewsByUser(it.id).getOrDefault(emptyList())
-                } ?: emptyList()
-
-                val favoritesCount = user?.favoriteRestaurants?.size ?: 0
+                val resolvedUserDeferred = async { userRepository.getCurrentUser().getOrNull() }
+                val reviewsCountDeferred = async {
+                    reviewRepository.getReviewsCountByUser(user.id).getOrDefault(0)
+                }
+                val reviewsDeferred = async {
+                    reviewRepository.getReviewsByUser(user.id).getOrDefault(emptyList())
+                }
+                val linkedBiometricAccountDeferred = async {
+                    localUserPreferences.getLinkedBiometricAccount()
+                }
+                val resolvedUser = resolvedUserDeferred.await() ?: user
+                val linkedBiometricAccount = linkedBiometricAccountDeferred.await()
 
                 _uiState.value = _uiState.value.copy(
-                    user = user,
+                    user = resolvedUser,
                     isLoading = false,
-                    reviewsCount = reviewsCount,
-                    favoritesCount = favoritesCount,
-                    reviews = reviews
+                    reviewsCount = reviewsCountDeferred.await(),
+                    favoritesCount = resolvedUser.favoriteRestaurants.size,
+                    reviews = reviewsDeferred.await(),
+                    isBiometricEnabled = linkedBiometricAccount?.userId == resolvedUser.id
                 )
             }
         }
     }
 
+    fun setBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val currentUser = _uiState.value.user ?: return@launch
+
+            if (enabled) {
+                localUserPreferences.saveLinkedBiometricAccount(
+                    userId = currentUser.id,
+                    name = currentUser.name,
+                    email = currentUser.email
+                )
+            } else {
+                val linkedBiometricAccount = localUserPreferences.getLinkedBiometricAccount()
+                if (linkedBiometricAccount?.userId == currentUser.id) {
+                    localUserPreferences.clearLinkedBiometricAccount()
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(isBiometricEnabled = enabled)
+        }
+    }
+
     fun logout() {
         viewModelScope.launch {
-            userRepository.signOut().fold(
-                onSuccess = { },
-                onFailure = { }
-            )
+            val currentUser = _uiState.value.user
+            val linkedBiometricAccount = localUserPreferences.getLinkedBiometricAccount()
+            val shouldKeepSessionForBiometric = currentUser != null &&
+                linkedBiometricAccount?.userId == currentUser.id
+
+            if (!shouldKeepSessionForBiometric) {
+                userRepository.signOut().fold(
+                    onSuccess = { },
+                    onFailure = { }
+                )
+            }
         }
     }
 }

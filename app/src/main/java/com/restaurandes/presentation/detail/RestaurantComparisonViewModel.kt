@@ -9,6 +9,7 @@ import com.restaurandes.domain.repository.LocationRepository
 import com.restaurandes.domain.repository.RestaurantRepository
 import com.restaurandes.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,8 +55,16 @@ class RestaurantComparisonViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-            val allRestaurants = restaurantRepository.getRestaurants().getOrNull().orEmpty()
-            val primaryRestaurant = restaurantRepository.getRestaurantById(primaryRestaurantId).getOrNull()
+            val allRestaurantsDeferred = async { restaurantRepository.getRestaurants() }
+            val primaryRestaurantDeferred = async { restaurantRepository.getRestaurantById(primaryRestaurantId) }
+            val currentUserDeferred = async { userRepository.getCurrentUser() }
+            val locationDeferred = async { locationRepository.getCurrentLocation() }
+            val secondaryRestaurantDeferred = secondaryRestaurantId
+                ?.takeIf { it.isNotBlank() }
+                ?.let { id -> async { restaurantRepository.getRestaurantById(id) } }
+
+            val allRestaurants = allRestaurantsDeferred.await().getOrDefault(emptyList())
+            val primaryRestaurant = primaryRestaurantDeferred.await().getOrNull()
 
             if (primaryRestaurant == null) {
                 _uiState.value = RestaurantComparisonUiState(
@@ -65,15 +74,21 @@ class RestaurantComparisonViewModel @Inject constructor(
                 return@launch
             }
 
-            val currentUser = userRepository.getCurrentUser().getOrNull()
+            val currentUser = currentUserDeferred.await().getOrNull()
             cachedUserId = currentUser?.id
-            cachedLocation = locationRepository.getCurrentLocation().getOrNull()
+            cachedLocation = locationDeferred.await().getOrNull()
                 ?: Location(4.6017, -74.0659)
+
+            analyticsService.logCompareOpened(
+                primaryRestaurantId = primaryRestaurant.id,
+                secondaryRestaurantId = secondaryRestaurantId,
+                userId = cachedUserId
+            )
 
             val others = allRestaurants.filter { it.id != primaryRestaurant.id }
 
             if (!secondaryRestaurantId.isNullOrBlank()) {
-                val secondaryRestaurant = restaurantRepository.getRestaurantById(secondaryRestaurantId).getOrNull()
+                val secondaryRestaurant = secondaryRestaurantDeferred?.await()?.getOrNull()
                 if (secondaryRestaurant == null) {
                     _uiState.value = RestaurantComparisonUiState(
                         isLoading = false,
@@ -151,6 +166,29 @@ class RestaurantComparisonViewModel @Inject constructor(
             primaryRestaurantId = primary.restaurant.id,
             secondaryRestaurantId = restaurant.id,
             selectionMode = "manual",
+            userId = cachedUserId
+        )
+    }
+
+    fun onRestaurantActionAfterCompare(selectedRestaurantId: String, destination: String) {
+        val primaryRestaurant = _uiState.value.primaryRestaurant?.restaurant ?: return
+        val secondaryRestaurant = _uiState.value.secondaryRestaurant?.restaurant ?: return
+
+        val comparedRestaurantId = if (selectedRestaurantId == primaryRestaurant.id) {
+            secondaryRestaurant.id
+        } else {
+            primaryRestaurant.id
+        }
+
+        analyticsService.logRestaurantSelectedAfterCompare(
+            selectedRestaurantId = selectedRestaurantId,
+            comparedRestaurantId = comparedRestaurantId,
+            userId = cachedUserId
+        )
+        analyticsService.logPostCompareNavigation(
+            selectedRestaurantId = selectedRestaurantId,
+            comparedRestaurantId = comparedRestaurantId,
+            destination = destination,
             userId = cachedUserId
         )
     }

@@ -1,5 +1,9 @@
 package com.restaurandes.presentation.detail
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +70,7 @@ fun RestaurantComparisonScreen(
     onNavigateToDetail: (String) -> Unit,
     viewModel: RestaurantComparisonViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(primaryRestaurantId, secondaryRestaurantId) {
@@ -124,7 +130,15 @@ fun RestaurantComparisonScreen(
                 ComparisonSummaryContent(
                     primary = uiState.primaryRestaurant!!,
                     secondary = uiState.secondaryRestaurant!!,
-                    paddingValues = paddingValues
+                    paddingValues = paddingValues,
+                    onViewDetails = { restaurant ->
+                        viewModel.onRestaurantActionAfterCompare(restaurant.id, "detail")
+                        onNavigateToDetail(restaurant.id)
+                    },
+                    onOpenDirections = { restaurant ->
+                        viewModel.onRestaurantActionAfterCompare(restaurant.id, "directions")
+                        openDirections(context, restaurant)
+                    }
                 )
             }
 
@@ -378,7 +392,9 @@ private fun RestaurantListItem(
 private fun ComparisonSummaryContent(
     primary: ComparableRestaurant,
     secondary: ComparableRestaurant,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onViewDetails: (Restaurant) -> Unit,
+    onOpenDirections: (Restaurant) -> Unit
 ) {
     val p = primary.restaurant
     val s = secondary.restaurant
@@ -404,6 +420,15 @@ private fun ComparisonSummaryContent(
                 primaryName = p.name,
                 secondaryName = s.name,
                 verdict = verdict
+            )
+        }
+
+        item {
+            FinalSelectionCard(
+                primaryRestaurant = p,
+                secondaryRestaurant = s,
+                onViewDetails = onViewDetails,
+                onOpenDirections = onOpenDirections
             )
         }
 
@@ -466,6 +491,113 @@ private fun ComparisonSummaryContent(
         }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun FinalSelectionCard(
+    primaryRestaurant: Restaurant,
+    secondaryRestaurant: Restaurant,
+    onViewDetails: (Restaurant) -> Unit,
+    onOpenDirections: (Restaurant) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Final selection after compare",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "Choose which restaurant you want to open next or get directions for.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            FinalSelectionRow(
+                restaurant = primaryRestaurant,
+                onViewDetails = onViewDetails,
+                onOpenDirections = onOpenDirections
+            )
+
+            FinalSelectionRow(
+                restaurant = secondaryRestaurant,
+                onViewDetails = onViewDetails,
+                onOpenDirections = onOpenDirections
+            )
+        }
+    }
+}
+
+@Composable
+private fun FinalSelectionRow(
+    restaurant: Restaurant,
+    onViewDetails: (Restaurant) -> Unit,
+    onOpenDirections: (Restaurant) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = restaurant.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            Text(
+                text = "${restaurant.category} • ${restaurant.priceRange}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    onClick = { onViewDetails(restaurant) },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.primary
+                ) {
+                    Text(
+                        text = "View details",
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+
+                Surface(
+                    onClick = { onOpenDirections(restaurant) },
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        text = "Directions",
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -762,6 +894,41 @@ private fun ComparisonValueChip(
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         )
+    }
+}
+
+private fun openDirections(
+    context: Context,
+    restaurant: Restaurant
+) {
+    val googleMapsIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("google.navigation:q=${restaurant.latitude},${restaurant.longitude}")
+    ).apply {
+        setPackage("com.google.android.apps.maps")
+    }
+
+    val geoIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse(
+            "geo:${restaurant.latitude},${restaurant.longitude}?q=${restaurant.latitude},${restaurant.longitude}(${Uri.encode(restaurant.name)})"
+        )
+    )
+
+    val resolvedIntent = when {
+        googleMapsIntent.resolveActivity(context.packageManager) != null -> googleMapsIntent
+        geoIntent.resolveActivity(context.packageManager) != null -> geoIntent
+        else -> null
+    }
+
+    if (resolvedIntent != null) {
+        context.startActivity(resolvedIntent)
+    } else {
+        Toast.makeText(
+            context,
+            "No map application found on this device.",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 }
 

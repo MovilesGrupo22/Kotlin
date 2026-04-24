@@ -6,6 +6,7 @@ import com.restaurandes.domain.model.CategoryTimeSlotStat
 import com.restaurandes.domain.model.RestaurantAnalytics
 import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,9 +37,13 @@ class AnalyticsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
-            val viewedResult = analyticsRepository.getTopViewedRestaurants(limit = 8)
-            val interactedResult = analyticsRepository.getTopInteractedRestaurants(limit = 8)
-            val categoryStatsResult = analyticsRepository.getCategoryTimeSlotStats()
+            val viewedDeferred = async { analyticsRepository.getTopViewedRestaurants(limit = 8) }
+            val interactedDeferred = async { analyticsRepository.getTopInteractedRestaurants(limit = 8) }
+            val categoryStatsDeferred = async { analyticsRepository.getCategoryTimeSlotStats() }
+
+            val viewedResult = viewedDeferred.await()
+            val interactedResult = interactedDeferred.await()
+            val categoryStatsResult = categoryStatsDeferred.await()
 
             val error = viewedResult.exceptionOrNull()
                 ?: interactedResult.exceptionOrNull()
