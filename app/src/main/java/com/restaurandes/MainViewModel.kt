@@ -11,6 +11,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 data class MainUiState(
@@ -39,10 +40,20 @@ class MainViewModel @Inject constructor(
 
     init {
         auth.addAuthStateListener(authStateListener)
+        viewModelScope.launch {
+            localUserPreferences.linkedBiometricAccount.collectLatest { linkedAccount ->
+                updateSessionState(
+                    currentUserId = auth.currentUser?.uid,
+                    linkedAccount = linkedAccount
+                )
+            }
+        }
     }
 
-    private suspend fun updateSessionState(currentUserId: String?) {
-        val linkedAccount = localUserPreferences.getLinkedBiometricAccount()
+    private suspend fun updateSessionState(
+        currentUserId: String?,
+        linkedAccount: LinkedBiometricAccount? = localUserPreferences.getLinkedBiometricAccount()
+    ) {
         val canUnlockLinkedAccount = currentUserId != null &&
             linkedAccount?.userId == currentUserId
         val shouldShowBiometricQuickAccess = linkedAccount != null

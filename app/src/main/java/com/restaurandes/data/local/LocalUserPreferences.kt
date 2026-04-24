@@ -47,6 +47,30 @@ class LocalUserPreferences @Inject constructor(
             preferences[LAST_HOME_FILTER] ?: "All"
         }
 
+    val linkedBiometricAccount: Flow<LinkedBiometricAccount?> = context.restaurandesDataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            val userId = preferences[BIOMETRIC_LINKED_USER_ID]
+            val name = preferences[BIOMETRIC_LINKED_USER_NAME]
+            val email = preferences[BIOMETRIC_LINKED_USER_EMAIL]
+
+            if (userId.isNullOrBlank() || email.isNullOrBlank()) {
+                null
+            } else {
+                LinkedBiometricAccount(
+                    userId = userId,
+                    name = name ?: email.substringBefore("@"),
+                    email = email
+                )
+            }
+        }
+
     suspend fun getLastHomeFilter(): String {
         return lastHomeFilter.first()
     }
@@ -58,30 +82,7 @@ class LocalUserPreferences @Inject constructor(
     }
 
     suspend fun getLinkedBiometricAccount(): LinkedBiometricAccount? {
-        return context.restaurandesDataStore.data
-            .catch { exception ->
-                if (exception is IOException) {
-                    emit(emptyPreferences())
-                } else {
-                    throw exception
-                }
-            }
-            .map { preferences ->
-                val userId = preferences[BIOMETRIC_LINKED_USER_ID]
-                val name = preferences[BIOMETRIC_LINKED_USER_NAME]
-                val email = preferences[BIOMETRIC_LINKED_USER_EMAIL]
-
-                if (userId.isNullOrBlank() || email.isNullOrBlank()) {
-                    null
-                } else {
-                    LinkedBiometricAccount(
-                        userId = userId,
-                        name = name ?: email.substringBefore("@"),
-                        email = email
-                    )
-                }
-            }
-            .first()
+        return linkedBiometricAccount.first()
     }
 
     suspend fun saveLinkedBiometricAccount(

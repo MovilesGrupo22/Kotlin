@@ -205,7 +205,7 @@ fun LoginScreen(
             )
         }
 
-        if (showBiometricQuickAccess && onBiometricQuickAccess != null) {
+        if (onBiometricQuickAccess != null) {
             Spacer(modifier = Modifier.height(18.dp))
 
             TextButton(

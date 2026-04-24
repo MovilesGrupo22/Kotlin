@@ -52,7 +52,13 @@ class MainActivity : FragmentActivity() {
                             startDestination = uiState.startDestination ?: Screen.Login.route,
                             showBiometricQuickAccess = uiState.shouldShowBiometricQuickAccess,
                             onBiometricQuickAccess = { onSuccess ->
-                                if (!uiState.canUnlockLinkedAccount) {
+                                if (uiState.linkedBiometricAccount == null) {
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "Activa el acceso biometrico desde el perfil para vincular una cuenta.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else if (!uiState.canUnlockLinkedAccount) {
                                     Toast.makeText(
                                         this@MainActivity,
                                         "Haz login manual con la cuenta vinculada una vez para reactivar el acceso biometrico.",
