@@ -63,7 +63,6 @@ class MainViewModel @Inject constructor(
 
         _uiState.value = MainUiState(
             startDestination = when {
-                canUnlockLinkedAccount -> Screen.Login.route
                 currentUserId != null -> Screen.Home.route
                 else -> Screen.Login.route
             },
