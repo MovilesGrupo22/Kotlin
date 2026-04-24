@@ -66,6 +66,14 @@
           }
         },
         {
+          "client_id": "994016422490-f23oo6hs173ode6ovcj41poma44ii7jn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.restaurandes",
+            "certificate_hash": "1b022a37f2f2811f2040702c25608bdc22ef2f7f"
+          }
+        },
+        {
           "client_id": "994016422490-m6ptu4g7bnuqru3vrrk791atr93hmnui.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
