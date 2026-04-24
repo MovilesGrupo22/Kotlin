@@ -17,8 +17,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -143,71 +141,7 @@ fun LoginScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        if (showBiometricQuickAccess && onBiometricQuickAccess != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Fingerprint,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Column {
-                            Text(
-                                text = biometricQuickAccessName ?: "Cuenta vinculada",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            if (!biometricQuickAccessEmail.isNullOrBlank()) {
-                                Text(
-                                    text = biometricQuickAccessEmail,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    Button(
-                        onClick = onBiometricQuickAccess,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Entrar con biometria")
-                    }
-
-                    if (onForgetBiometricQuickAccess != null) {
-                        TextButton(
-                            onClick = onForgetBiometricQuickAccess,
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text("Olvidar acceso biometrico")
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            HorizontalDivider(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        Spacer(modifier = Modifier.height(48.dp))
 
         OutlinedTextField(
             value = email,
@@ -291,6 +225,37 @@ fun LoginScreen(
                 text = "Continuar con Google",
                 style = MaterialTheme.typography.labelLarge
             )
+        }
+
+        if (showBiometricQuickAccess && onBiometricQuickAccess != null) {
+            Spacer(modifier = Modifier.height(18.dp))
+
+            if (!biometricQuickAccessName.isNullOrBlank() || !biometricQuickAccessEmail.isNullOrBlank()) {
+                Text(
+                    text = biometricQuickAccessName ?: biometricQuickAccessEmail ?: "",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            OutlinedButton(
+                onClick = onBiometricQuickAccess,
+                enabled = !uiState.isLoading
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Fingerprint,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text("Entrar con biometria")
+            }
+
+            if (onForgetBiometricQuickAccess != null) {
+                TextButton(onClick = onForgetBiometricQuickAccess) {
+                    Text("Olvidar acceso biometrico")
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

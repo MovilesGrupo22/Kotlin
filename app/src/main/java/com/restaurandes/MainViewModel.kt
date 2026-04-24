@@ -17,7 +17,8 @@ data class MainUiState(
     val startDestination: String? = null,
     val isInitializing: Boolean = true,
     val linkedBiometricAccount: LinkedBiometricAccount? = null,
-    val shouldShowBiometricQuickAccess: Boolean = false
+    val shouldShowBiometricQuickAccess: Boolean = false,
+    val canUnlockLinkedAccount: Boolean = false
 )
 
 @HiltViewModel
@@ -42,18 +43,20 @@ class MainViewModel @Inject constructor(
 
     private suspend fun updateSessionState(currentUserId: String?) {
         val linkedAccount = localUserPreferences.getLinkedBiometricAccount()
-        val canUseBiometricQuickAccess = currentUserId != null &&
+        val canUnlockLinkedAccount = currentUserId != null &&
             linkedAccount?.userId == currentUserId
+        val shouldShowBiometricQuickAccess = linkedAccount != null
 
         _uiState.value = MainUiState(
             startDestination = when {
-                canUseBiometricQuickAccess -> Screen.Login.route
+                shouldShowBiometricQuickAccess -> Screen.Login.route
                 currentUserId != null -> Screen.Home.route
                 else -> Screen.Login.route
             },
             isInitializing = false,
             linkedBiometricAccount = linkedAccount,
-            shouldShowBiometricQuickAccess = canUseBiometricQuickAccess
+            shouldShowBiometricQuickAccess = shouldShowBiometricQuickAccess,
+            canUnlockLinkedAccount = canUnlockLinkedAccount
         )
     }
 

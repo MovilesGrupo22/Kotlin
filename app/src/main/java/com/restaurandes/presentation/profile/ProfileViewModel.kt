@@ -3,6 +3,7 @@ package com.restaurandes.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
+import com.restaurandes.data.local.LocalUserPreferences
 import com.restaurandes.domain.model.Review
 import com.restaurandes.domain.model.User
 import com.restaurandes.domain.repository.ReviewRepository
@@ -28,7 +29,8 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val reviewRepository: ReviewRepository,
-    private val analyticsService: AnalyticsService
+    private val analyticsService: AnalyticsService,
+    private val localUserPreferences: LocalUserPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -71,10 +73,17 @@ class ProfileViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
-            userRepository.signOut().fold(
-                onSuccess = { },
-                onFailure = { }
-            )
+            val currentUser = _uiState.value.user
+            val linkedBiometricAccount = localUserPreferences.getLinkedBiometricAccount()
+            val shouldKeepSessionForBiometric = currentUser != null &&
+                linkedBiometricAccount?.userId == currentUser.id
+
+            if (!shouldKeepSessionForBiometric) {
+                userRepository.signOut().fold(
+                    onSuccess = { },
+                    onFailure = { }
+                )
+            }
         }
     }
 }

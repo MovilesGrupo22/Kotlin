@@ -54,7 +54,13 @@ class MainActivity : FragmentActivity() {
                             biometricQuickAccessEmail = uiState.linkedBiometricAccount?.email,
                             showBiometricQuickAccess = uiState.shouldShowBiometricQuickAccess,
                             onBiometricQuickAccess = { onSuccess ->
-                                if (biometricAuthManager.isBiometricAvailable()) {
+                                if (!uiState.canUnlockLinkedAccount) {
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "Haz login manual con la cuenta vinculada una vez para reactivar el acceso biometrico.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else if (biometricAuthManager.isBiometricAvailable()) {
                                     biometricAuthManager.authenticate(
                                         title = "Ingreso biometrico",
                                         subtitle = "Accede a Restaurandes",
