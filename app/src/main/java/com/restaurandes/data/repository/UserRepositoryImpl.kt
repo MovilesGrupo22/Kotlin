@@ -32,10 +32,20 @@ class UserRepositoryImpl @Inject constructor(
         auth.addAuthStateListener { firebaseAuth ->
             val firebaseUser = firebaseAuth.currentUser
             if (firebaseUser != null) {
+                val existingUser = _currentUser.value?.takeIf { it.id == firebaseUser.uid }
+                    ?: lastKnownUser?.takeIf { it.id == firebaseUser.uid }
+
                 _currentUser.value = User(
                     id = firebaseUser.uid,
-                    email = firebaseUser.email ?: "",
-                    name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "User"
+                    email = existingUser?.email ?: firebaseUser.email ?: "",
+                    name = existingUser?.name
+                        ?: firebaseUser.displayName
+                        ?: firebaseUser.email?.substringBefore("@")
+                        ?: "User",
+                    photoUrl = existingUser?.photoUrl ?: firebaseUser.photoUrl?.toString(),
+                    favoriteRestaurants = existingUser?.favoriteRestaurants ?: emptyList(),
+                    dietaryPreferences = existingUser?.dietaryPreferences ?: emptyList(),
+                    createdAt = existingUser?.createdAt ?: System.currentTimeMillis()
                 )
             } else {
                 _currentUser.value = null
@@ -64,16 +74,23 @@ class UserRepositoryImpl @Inject constructor(
                         id = firebaseUser.uid,
                         email = doc.getString("email") ?: firebaseUser.email ?: "",
                         name = doc.getString("name") ?: firebaseUser.displayName ?: "",
+                        photoUrl = doc.getString("photoUrl") ?: firebaseUser.photoUrl?.toString(),
                         favoriteRestaurants = (doc.get("favoriteRestaurants") as? List<*>)
                             ?.filterIsInstance<String>() ?: emptyList(),
                         dietaryPreferences = (doc.get("dietaryPreferences") as? List<*>)
-                            ?.filterIsInstance<String>() ?: emptyList()
+                            ?.filterIsInstance<String>() ?: emptyList(),
+                        createdAt = doc.getLong("createdAt")
+                            ?: lastKnownUser?.takeIf { it.id == firebaseUser.uid }?.createdAt
+                            ?: System.currentTimeMillis()
                     )
                 } else {
                     val newUser = User(
                         id = firebaseUser.uid,
                         email = firebaseUser.email ?: "",
-                        name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "User"
+                        name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "User",
+                        photoUrl = firebaseUser.photoUrl?.toString(),
+                        createdAt = lastKnownUser?.takeIf { it.id == firebaseUser.uid }?.createdAt
+                            ?: System.currentTimeMillis()
                     )
                     saveUserToFirestore(newUser)
                     newUser
@@ -97,7 +114,10 @@ class UserRepositoryImpl @Inject constructor(
             val user = User(
                 id = firebaseUser.uid,
                 email = firebaseUser.email ?: email,
-                name = firebaseUser.displayName ?: email.substringBefore("@")
+                name = firebaseUser.displayName ?: email.substringBefore("@"),
+                photoUrl = firebaseUser.photoUrl?.toString(),
+                createdAt = lastKnownUser?.takeIf { it.id == firebaseUser.uid }?.createdAt
+                    ?: System.currentTimeMillis()
             )
             
             getCurrentUser()
@@ -123,7 +143,10 @@ class UserRepositoryImpl @Inject constructor(
             Result.success(_currentUser.value ?: User(
                 id = firebaseUser.uid,
                 email = firebaseUser.email ?: "",
-                name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "User"
+                name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "User",
+                photoUrl = firebaseUser.photoUrl?.toString(),
+                createdAt = lastKnownUser?.takeIf { it.id == firebaseUser.uid }?.createdAt
+                    ?: System.currentTimeMillis()
             ))
         } catch (e: Exception) {
             Result.failure(e)
@@ -138,7 +161,9 @@ class UserRepositoryImpl @Inject constructor(
             val user = User(
                 id = firebaseUser.uid,
                 email = email,
-                name = name
+                name = name,
+                photoUrl = firebaseUser.photoUrl?.toString(),
+                createdAt = System.currentTimeMillis()
             )
             
             saveUserToFirestore(user)
@@ -236,9 +261,10 @@ class UserRepositoryImpl @Inject constructor(
                 mapOf(
                     "email" to user.email,
                     "name" to user.name,
+                    "photoUrl" to user.photoUrl,
                     "favoriteRestaurants" to user.favoriteRestaurants,
                     "dietaryPreferences" to user.dietaryPreferences,
-                    "createdAt" to System.currentTimeMillis()
+                    "createdAt" to user.createdAt
                 )
             )
             .await()
