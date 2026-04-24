@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
 import com.restaurandes.domain.model.Restaurant
+import com.restaurandes.domain.model.getCurrentDayOfWeek
 import com.restaurandes.domain.model.getCurrentTimeSlot
 import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
 import com.restaurandes.domain.repository.RestaurantRepository
@@ -79,9 +80,16 @@ class RestaurantDetailViewModel @Inject constructor(
                         }
 
                         launch {
+                            val timeSlot = getCurrentTimeSlot()
+                            val dayOfWeek = getCurrentDayOfWeek()
                             restaurantAnalyticsRepository.trackCategoryExplored(
                                 restaurantWithFreshReviews.category,
-                                getCurrentTimeSlot()
+                                timeSlot
+                            )
+                            restaurantAnalyticsRepository.trackCategoryPeak(
+                                restaurantWithFreshReviews.category,
+                                timeSlot,
+                                dayOfWeek
                             )
                         }
                     },
