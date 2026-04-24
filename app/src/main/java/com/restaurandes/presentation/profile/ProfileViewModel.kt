@@ -3,36 +3,32 @@ package com.restaurandes.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.restaurandes.data.analytics.AnalyticsService
-import com.restaurandes.data.local.LocalUserPreferences
 import com.restaurandes.domain.model.Review
 import com.restaurandes.domain.model.User
 import com.restaurandes.domain.repository.ReviewRepository
 import com.restaurandes.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class ProfileUiState(
     val user: User? = null,
     val isLoading: Boolean = false,
     val reviewsCount: Int = 0,
     val favoritesCount: Int = 0,
-    val reviews: List<Review> = emptyList(),
-    val isBiometricEnabled: Boolean = false,
-    val isUpdatingBiometricPreference: Boolean = false
+    val reviews: List<Review> = emptyList()
 )
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val reviewRepository: ReviewRepository,
-    private val analyticsService: AnalyticsService,
-    private val localUserPreferences: LocalUserPreferences
+    private val analyticsService: AnalyticsService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -60,9 +56,6 @@ class ProfileViewModel @Inject constructor(
                 val reviewsDeferred = async {
                     reviewRepository.getReviewsByUser(user.id).getOrDefault(emptyList())
                 }
-                val biometricEnabledDeferred = async {
-                    localUserPreferences.isBiometricEnabled(user.id)
-                }
                 val resolvedUser = resolvedUserDeferred.await() ?: user
 
                 _uiState.value = _uiState.value.copy(
@@ -70,25 +63,9 @@ class ProfileViewModel @Inject constructor(
                     isLoading = false,
                     reviewsCount = reviewsCountDeferred.await(),
                     favoritesCount = resolvedUser.favoriteRestaurants.size,
-                    reviews = reviewsDeferred.await(),
-                    isBiometricEnabled = biometricEnabledDeferred.await()
+                    reviews = reviewsDeferred.await()
                 )
             }
-        }
-    }
-
-    fun setBiometricEnabled(enabled: Boolean) {
-        val currentUser = _uiState.value.user ?: return
-
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isUpdatingBiometricPreference = true)
-
-            localUserPreferences.saveBiometricEnabled(currentUser.id, enabled)
-
-            _uiState.value = _uiState.value.copy(
-                isBiometricEnabled = enabled,
-                isUpdatingBiometricPreference = false
-            )
         }
     }
 

@@ -2,12 +2,40 @@ package com.restaurandes.presentation.auth
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -26,12 +54,18 @@ private const val WEB_CLIENT_ID = "994016422490-h9gelll1f6onamlgnft149g4kruhbhdc
 fun LoginScreen(
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
+    showBiometricQuickAccess: Boolean = false,
+    biometricQuickAccessName: String? = null,
+    biometricQuickAccessEmail: String? = null,
+    onBiometricQuickAccess: (() -> Unit)? = null,
+    onForgetBiometricQuickAccess: (() -> Unit)? = null,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var linkBiometricAccess by remember { mutableStateOf(false) }
 
     val uiState by viewModel.uiState.collectAsState()
 
@@ -51,17 +85,19 @@ fun LoginScreen(
             val account = task.getResult(ApiException::class.java)
             val idToken = account.idToken
             if (idToken != null) {
-                viewModel.signInWithGoogle(idToken)
+                viewModel.signInWithGoogle(idToken, linkBiometricAccess)
             } else {
-                viewModel.setError("Google no devolvió un token. Verifica que el SHA-1 del proyecto esté registrado en Firebase Console.")
+                viewModel.setError(
+                    "Google no devolvio un token. Verifica que el SHA-1 del proyecto este registrado en Firebase Console."
+                )
             }
         } catch (e: ApiException) {
             val message = when (e.statusCode) {
-                10 -> "Error de configuración (código 10): el SHA-1 del keystore no coincide con el registrado en Firebase Console."
-                12501 -> "Inicio de sesión cancelado."
-                12502 -> "Inicio de sesión ya en progreso."
-                7 -> "Sin conexión a internet."
-                else -> "Error de Google Sign-In (código ${e.statusCode})."
+                10 -> "Error de configuracion (codigo 10): el SHA-1 del keystore no coincide con el registrado en Firebase Console."
+                12501 -> "Inicio de sesion cancelado."
+                12502 -> "Inicio de sesion ya en progreso."
+                7 -> "Sin conexion a internet."
+                else -> "Error de Google Sign-In (codigo ${e.statusCode})."
             }
             viewModel.setError(message)
         }
@@ -107,7 +143,71 @@ fun LoginScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
+
+        if (showBiometricQuickAccess && onBiometricQuickAccess != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Fingerprint,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column {
+                            Text(
+                                text = biometricQuickAccessName ?: "Cuenta vinculada",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            if (!biometricQuickAccessEmail.isNullOrBlank()) {
+                                Text(
+                                    text = biometricQuickAccessEmail,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = onBiometricQuickAccess,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Entrar con biometria")
+                    }
+
+                    if (onForgetBiometricQuickAccess != null) {
+                        TextButton(
+                            onClick = onForgetBiometricQuickAccess,
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Olvidar acceso biometrico")
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            HorizontalDivider(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         OutlinedTextField(
             value = email,
@@ -125,7 +225,11 @@ fun LoginScreen(
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) {
+                VisualTransformation.None
+            } else {
+                PasswordVisualTransformation()
+            },
             trailingIcon = {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
@@ -136,10 +240,26 @@ fun LoginScreen(
             }
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = linkBiometricAccess,
+                onCheckedChange = { linkBiometricAccess = it }
+            )
+            Text(
+                text = "Vincular esta cuenta al acceso biometrico de este dispositivo",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Button(
-            onClick = { viewModel.login(email, password) },
+            onClick = { viewModel.login(email, password, linkBiometricAccess) },
             modifier = Modifier.fillMaxWidth(),
             enabled = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
         ) {

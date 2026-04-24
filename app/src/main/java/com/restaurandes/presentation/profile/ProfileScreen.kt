@@ -1,6 +1,5 @@
 package com.restaurandes.presentation.profile
 
-import androidx.biometric.BiometricManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,19 +28,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.restaurandes.security.BiometricAuthManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,13 +47,6 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
-    val biometricAvailable = remember(context) {
-        BiometricManager.from(context).canAuthenticate(BiometricAuthManager.AUTHENTICATORS) ==
-            BiometricManager.BIOMETRIC_SUCCESS
-    }
-    val canToggleBiometric = !uiState.isUpdatingBiometricPreference &&
-        (biometricAvailable || uiState.isBiometricEnabled)
 
     Scaffold(
         topBar = {
@@ -195,54 +183,6 @@ fun ProfileScreen(
                                     )
                                 }
                             }
-                        }
-                    }
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = "Biometric access",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = when {
-                                        uiState.isBiometricEnabled ->
-                                            "This account will ask for biometric verification only when you reopen the app."
-                                        biometricAvailable ->
-                                            "Enable this only if you want this account protected when the app starts."
-                                        else ->
-                                            "Biometric protection is not available on this device right now."
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Switch(
-                                checked = uiState.isBiometricEnabled,
-                                onCheckedChange = { enabled ->
-                                    if (!enabled || biometricAvailable) {
-                                        viewModel.setBiometricEnabled(enabled)
-                                    }
-                                },
-                                enabled = canToggleBiometric
-                            )
                         }
                     }
 

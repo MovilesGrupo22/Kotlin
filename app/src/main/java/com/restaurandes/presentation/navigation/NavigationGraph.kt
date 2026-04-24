@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.restaurandes.presentation.analytics.AnalyticsScreen
 import com.restaurandes.presentation.auth.LoginScreen
 import com.restaurandes.presentation.auth.RegisterScreen
 import com.restaurandes.presentation.detail.RestaurantComparisonScreen
@@ -15,18 +16,21 @@ import com.restaurandes.presentation.detail.RestaurantReviewsScreen
 import com.restaurandes.presentation.favorites.FavoritesScreen
 import com.restaurandes.presentation.home.HomeScreen
 import com.restaurandes.presentation.map.MapScreen
-import com.restaurandes.presentation.analytics.AnalyticsScreen
 import com.restaurandes.presentation.profile.ProfileScreen
 import com.restaurandes.presentation.search.SearchScreen
 
+typealias BiometricQuickAccessHandler = ((() -> Unit) -> Unit)
 
-typealias BiometricLoginHandler = ((() -> Unit) -> Unit)
 @Composable
 fun NavigationGraph(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route,
-    onBiometricLoginRequired: BiometricLoginHandler? = null
+    showBiometricQuickAccess: Boolean = false,
+    biometricQuickAccessName: String? = null,
+    biometricQuickAccessEmail: String? = null,
+    onBiometricQuickAccess: BiometricQuickAccessHandler? = null,
+    onForgetBiometricQuickAccess: (() -> Unit)? = null
 ) {
     NavHost(
         navController = navController,
@@ -39,15 +43,24 @@ fun NavigationGraph(
                     navController.navigate(Screen.Register.route)
                 },
                 onLoginSuccess = {
-                    val goHome = {
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
-                }
-                onBiometricLoginRequired?.invoke(goHome) ?: goHome()
-            }
-        )
-    }
+                },
+                showBiometricQuickAccess = showBiometricQuickAccess,
+                biometricQuickAccessName = biometricQuickAccessName,
+                biometricQuickAccessEmail = biometricQuickAccessEmail,
+                onBiometricQuickAccess = {
+                    val goHome = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    }
+                    onBiometricQuickAccess?.invoke(goHome)
+                },
+                onForgetBiometricQuickAccess = onForgetBiometricQuickAccess
+            )
+        }
 
         composable(Screen.Register.route) {
             RegisterScreen(

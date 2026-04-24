@@ -1,7 +1,6 @@
 package com.restaurandes.data.local
 
 import android.content.Context
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -19,16 +18,22 @@ private val Context.restaurandesDataStore by preferencesDataStore(
     name = "restaurandes_user_preferences"
 )
 
+data class LinkedBiometricAccount(
+    val userId: String,
+    val name: String,
+    val email: String
+)
+
 @Singleton
 class LocalUserPreferences @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private companion object {
         val LAST_HOME_FILTER = stringPreferencesKey("last_home_filter")
+        val BIOMETRIC_LINKED_USER_ID = stringPreferencesKey("biometric_linked_user_id")
+        val BIOMETRIC_LINKED_USER_NAME = stringPreferencesKey("biometric_linked_user_name")
+        val BIOMETRIC_LINKED_USER_EMAIL = stringPreferencesKey("biometric_linked_user_email")
     }
-
-    private fun biometricEnabledKey(userId: String) =
-        booleanPreferencesKey("biometric_enabled_$userId")
 
     val lastHomeFilter: Flow<String> = context.restaurandesDataStore.data
         .catch { exception ->
@@ -52,7 +57,7 @@ class LocalUserPreferences @Inject constructor(
         }
     }
 
-    suspend fun isBiometricEnabled(userId: String): Boolean {
+    suspend fun getLinkedBiometricAccount(): LinkedBiometricAccount? {
         return context.restaurandesDataStore.data
             .catch { exception ->
                 if (exception is IOException) {
@@ -62,14 +67,40 @@ class LocalUserPreferences @Inject constructor(
                 }
             }
             .map { preferences ->
-                preferences[biometricEnabledKey(userId)] ?: false
+                val userId = preferences[BIOMETRIC_LINKED_USER_ID]
+                val name = preferences[BIOMETRIC_LINKED_USER_NAME]
+                val email = preferences[BIOMETRIC_LINKED_USER_EMAIL]
+
+                if (userId.isNullOrBlank() || email.isNullOrBlank()) {
+                    null
+                } else {
+                    LinkedBiometricAccount(
+                        userId = userId,
+                        name = name ?: email.substringBefore("@"),
+                        email = email
+                    )
+                }
             }
             .first()
     }
 
-    suspend fun saveBiometricEnabled(userId: String, enabled: Boolean) {
+    suspend fun saveLinkedBiometricAccount(
+        userId: String,
+        name: String,
+        email: String
+    ) {
         context.restaurandesDataStore.edit { preferences ->
-            preferences[biometricEnabledKey(userId)] = enabled
+            preferences[BIOMETRIC_LINKED_USER_ID] = userId
+            preferences[BIOMETRIC_LINKED_USER_NAME] = name
+            preferences[BIOMETRIC_LINKED_USER_EMAIL] = email
+        }
+    }
+
+    suspend fun clearLinkedBiometricAccount() {
+        context.restaurandesDataStore.edit { preferences ->
+            preferences.remove(BIOMETRIC_LINKED_USER_ID)
+            preferences.remove(BIOMETRIC_LINKED_USER_NAME)
+            preferences.remove(BIOMETRIC_LINKED_USER_EMAIL)
         }
     }
 }
