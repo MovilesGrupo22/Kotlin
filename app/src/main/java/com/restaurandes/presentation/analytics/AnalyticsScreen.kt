@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.restaurandes.domain.model.CategoryPeakStat
 import com.restaurandes.domain.model.CategoryTimeSlotStat
 import com.restaurandes.domain.model.RestaurantAnalytics
 
@@ -119,6 +120,10 @@ fun AnalyticsScreen(
 
                     item {
                         CategoryTimeSlotCard(stats = uiState.categoryTimeSlotStats)
+                    }
+
+                    item {
+                        CategoryPeakCard(stats = uiState.categoryPeakStats)
                     }
 
                     item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -349,5 +354,136 @@ private fun RankingRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(36.dp)
         )
+    }
+}
+
+@Composable
+private fun CategoryPeakCard(stats: List<CategoryPeakStat>) {
+    val timeSlotLabel = mapOf(
+        "breakfast" to "Desayuno",
+        "lunch" to "Almuerzo",
+        "snack" to "Merienda",
+        "dinner" to "Cena",
+        "night" to "Noche"
+    )
+    val dayLabel = mapOf(
+        "monday" to "Lun", "tuesday" to "Mar", "wednesday" to "Mié",
+        "thursday" to "Jue", "friday" to "Vie", "saturday" to "Sáb", "sunday" to "Dom"
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "BQ4 — Picos de demanda por tipo de comida",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Franja horaria y día con más exploración por categoría",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (stats.isEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Sin datos aún. Explora restaurantes para generar estadísticas.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                return@Column
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val byCategory = stats
+                .groupBy { it.category }
+                .mapValues { (_, entries) -> entries.sortedByDescending { it.count } }
+                .entries
+                .sortedByDescending { (_, entries) -> entries.first().count }
+
+            byCategory.forEachIndexed { index, (category, entries) ->
+                val peak = entries.first()
+                val totalForCategory = entries.sumOf { it.count }
+                val peakLabel = "${timeSlotLabel[peak.timeSlot] ?: peak.timeSlot} · ${dayLabel[peak.dayOfWeek] ?: peak.dayOfWeek}"
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = if (index < byCategory.lastIndex) 12.dp else 0.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Pico: $peakLabel  ·  ${peak.count} visitas",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val maxInCategory = entries.first().count.takeIf { it > 0 } ?: 1L
+                        entries.take(3).forEach { stat ->
+                            val slotDay = "${timeSlotLabel[stat.timeSlot] ?: stat.timeSlot} ${dayLabel[stat.dayOfWeek] ?: stat.dayOfWeek}"
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.padding(bottom = 3.dp)
+                            ) {
+                                Text(
+                                    text = slotDay,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(90.dp)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(5.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(fraction = (stat.count.toFloat() / maxInCategory.toFloat()).coerceIn(0f, 1f))
+                                            .fillMaxHeight()
+                                            .clip(RoundedCornerShape(3.dp))
+                                            .background(MaterialTheme.colorScheme.secondary)
+                                    )
+                                }
+                                Text(
+                                    text = "${stat.count}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "$totalForCategory",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        Text(
+                            text = "total",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }

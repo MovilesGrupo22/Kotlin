@@ -44,15 +44,8 @@ fun NavigationGraph(
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
-                showBiometricQuickAccess = showBiometricQuickAccess,
-                onBiometricQuickAccess = {
-                    val goHome = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(Screen.Login.route) { inclusive = true }
-                        }
-                    }
-                    onBiometricQuickAccess?.invoke(goHome)
-                }
+                showBiometricQuickAccess = false,
+                onBiometricQuickAccess = null
             )
         }
 

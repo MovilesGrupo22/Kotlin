@@ -2,6 +2,7 @@ package com.restaurandes.presentation.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.restaurandes.domain.model.CategoryPeakStat
 import com.restaurandes.domain.model.CategoryTimeSlotStat
 import com.restaurandes.domain.model.RestaurantAnalytics
 import com.restaurandes.domain.repository.RestaurantAnalyticsRepository
@@ -18,6 +19,7 @@ data class AnalyticsUiState(
     val topViewed: List<RestaurantAnalytics> = emptyList(),
     val topInteracted: List<RestaurantAnalytics> = emptyList(),
     val categoryTimeSlotStats: List<CategoryTimeSlotStat> = emptyList(),
+    val categoryPeakStats: List<CategoryPeakStat> = emptyList(),
     val error: String? = null
 )
 
@@ -40,20 +42,24 @@ class AnalyticsViewModel @Inject constructor(
             val viewedDeferred = async { analyticsRepository.getTopViewedRestaurants(limit = 8) }
             val interactedDeferred = async { analyticsRepository.getTopInteractedRestaurants(limit = 8) }
             val categoryStatsDeferred = async { analyticsRepository.getCategoryTimeSlotStats() }
+            val peakStatsDeferred = async { analyticsRepository.getCategoryPeakStats() }
 
             val viewedResult = viewedDeferred.await()
             val interactedResult = interactedDeferred.await()
             val categoryStatsResult = categoryStatsDeferred.await()
+            val peakStatsResult = peakStatsDeferred.await()
 
             val error = viewedResult.exceptionOrNull()
                 ?: interactedResult.exceptionOrNull()
                 ?: categoryStatsResult.exceptionOrNull()
+                ?: peakStatsResult.exceptionOrNull()
 
             _uiState.value = AnalyticsUiState(
                 isLoading = false,
                 topViewed = viewedResult.getOrNull().orEmpty(),
                 topInteracted = interactedResult.getOrNull().orEmpty(),
                 categoryTimeSlotStats = categoryStatsResult.getOrNull().orEmpty(),
+                categoryPeakStats = peakStatsResult.getOrNull().orEmpty(),
                 error = error?.message
             )
         }
