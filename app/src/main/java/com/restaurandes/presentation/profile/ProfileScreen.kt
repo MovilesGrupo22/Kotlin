@@ -205,6 +205,7 @@ fun ProfileScreen(
                         }
                     }
 
+                    /* Biometric access card — disabled, kept for future re-enable
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -240,6 +241,7 @@ fun ProfileScreen(
                             )
                         }
                     }
+                    */
 
                     if (uiState.reviews.isNotEmpty()) {
                         Text(
